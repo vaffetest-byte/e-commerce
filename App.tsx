@@ -17,12 +17,12 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activePath, setActivePath] = useState<string>('/');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  
+
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
@@ -30,9 +30,9 @@ const App: React.FC = () => {
 
   const syncData = async () => {
     try {
-      const data = await inventoryService.getProducts({ 
-        search: '', category: 'All', status: 'All' as any, stockLevel: 'All', 
-        sortBy: 'name', sortOrder: 'asc' 
+      const data = await inventoryService.getProducts({
+        search: '', category: 'All', status: 'All' as any, stockLevel: 'All',
+        sortBy: 'name', sortOrder: 'asc'
       });
       setProducts(data || []);
     } catch (err) {
@@ -58,18 +58,26 @@ const App: React.FC = () => {
     setAuthError(null);
     await new Promise(r => setTimeout(r, 800));
 
-    if (loginEmail.toLowerCase() === 'admin@seoulmuse.com' && loginPassword === 'admin') {
-      const user: User = {
-        id: 'usr-001',
-        name: 'Alexander Pierce',
-        email: 'admin@seoulmuse.com',
-        role: Role.SUPER_ADMIN,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-      };
-      setCurrentUser(user);
+    try {
+      const response = await fetch('http://localhost:3001/api/admin/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const { token, user } = await response.json();
+
+      // Combine token into user object or separate storage. App expects session obj.
+      const sessionUser = { ...user, token };
+
+      setCurrentUser(sessionUser);
       setIsAuthenticated(true);
-      localStorage.setItem('muse_admin_session', JSON.stringify(user));
-    } else {
+      localStorage.setItem('muse_admin_session', JSON.stringify(sessionUser));
+    } catch (err) {
       setAuthError('Identity validation failed.');
     }
     setIsAuthenticating(false);
@@ -77,13 +85,13 @@ const App: React.FC = () => {
 
   const ViewToggle = () => (
     <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[300] bg-[#0f172a] text-white p-2 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-2 border border-white/5 animate-in slide-in-from-bottom-10 duration-1000">
-      <button 
+      <button
         onClick={() => setView('store')}
         className={`flex items-center gap-4 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-500 ${view === 'store' ? 'bg-white text-black shadow-xl' : 'opacity-40 hover:opacity-100'}`}
       >
         <ShoppingBag size={16} /> <span>Muse Mode</span>
       </button>
-      <button 
+      <button
         onClick={() => setView('admin')}
         className={`flex items-center gap-4 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-500 ${view === 'admin' ? 'bg-rose-500 text-white shadow-xl' : 'opacity-40 hover:opacity-100'}`}
       >
@@ -106,11 +114,11 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#fdfcfb] flex flex-col items-center justify-center p-6 relative">
         <div className="w-full max-w-md bg-white rounded-[60px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] p-16 border border-black/[0.03]">
           <div className="text-center mb-12">
-             <div className="w-20 h-20 bg-[#0f172a] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-2xl rotate-3">
-               <Fingerprint size={40} strokeWidth={1} />
-             </div>
-             <h2 className="serif text-5xl italic mb-3">Atelier Access</h2>
-             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-black/30">Personnel Validation Required</p>
+            <div className="w-20 h-20 bg-[#0f172a] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-2xl rotate-3">
+              <Fingerprint size={40} strokeWidth={1} />
+            </div>
+            <h2 className="serif text-5xl italic mb-3">Atelier Access</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-black/30">Personnel Validation Required</p>
           </div>
           {authError && <p className="mb-6 text-rose-500 text-[10px] font-black uppercase text-center animate-pulse">{authError}</p>}
           <form onSubmit={handleLogin} className="space-y-6">
@@ -137,17 +145,17 @@ const App: React.FC = () => {
 
   return (
     <div className="animate-in fade-in duration-1000">
-      <Layout 
-        user={currentUser!} 
-        onLogout={() => { setIsAuthenticated(false); localStorage.removeItem('muse_admin_session'); setView('store'); }} 
-        activePath={activePath} 
+      <Layout
+        user={currentUser!}
+        onLogout={() => { setIsAuthenticated(false); localStorage.removeItem('muse_admin_session'); setView('store'); }}
+        activePath={activePath}
         onNavigate={setActivePath}
       >
         {activePath === '/' && <Dashboard />}
         {activePath === '/products' && <Products />}
-        {activePath === '/orders' && <Orders orders={orders} onUpdateOrder={() => {}} />}
+        {activePath === '/orders' && <Orders orders={orders} onUpdateOrder={() => { }} />}
         {activePath === '/customers' && <Customers customers={customers} />}
-        {activePath === '/marketing' && <Marketing coupons={coupons} onUpdateCoupon={() => {}} />}
+        {activePath === '/marketing' && <Marketing coupons={coupons} onUpdateCoupon={() => { }} />}
         {activePath === '/settings' && <Settings />}
       </Layout>
       <ViewToggle />

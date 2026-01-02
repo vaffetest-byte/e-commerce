@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, Search, Edit2, Trash2, Sparkles, 
-  Loader2, ChevronUp, ChevronDown, Download, 
+import {
+  Plus, Search, Edit2, Trash2, Sparkles,
+  Loader2, ChevronUp, ChevronDown, Download,
   X, Image as ImageIcon, Check, AlertCircle,
   ArrowUpDown, Wand2, Upload
 } from 'lucide-react';
@@ -32,6 +32,9 @@ const Products: React.FC = () => {
     try {
       const data = await inventoryService.getProducts(filters);
       setProducts(data);
+    } catch (err) {
+      console.error(err);
+      // Optional: set empty or error state
     } finally {
       setLoading(false);
     }
@@ -43,8 +46,19 @@ const Products: React.FC = () => {
 
   const handleAdjustStock = async (product: Product, delta: number) => {
     if (product.stock + delta < 0) return;
+
+    // Optimistic Update
+    const previousProducts = [...products];
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + delta } : p));
-    await inventoryService.adjustStock(product.id, delta);
+
+    try {
+      await inventoryService.adjustStock(product.id, delta);
+    } catch (err: any) {
+      // Rollback on failure
+      setProducts(previousProducts);
+      console.error(err);
+      alert(`Stock update failed: ${err.message}`);
+    }
   };
 
   const handleStatusToggle = async (product: Product) => {
@@ -55,8 +69,12 @@ const Products: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Archive this product? It will be hidden from the storefront.")) {
-      await inventoryService.deleteProduct(id);
-      loadInventory();
+      try {
+        await inventoryService.deleteProduct(id);
+        await loadInventory();
+      } catch (err) {
+        alert("Failed to archive product. Please try again.");
+      }
     }
   };
 
@@ -81,11 +99,11 @@ const Products: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct?.name || !editingProduct?.sku) return;
-    
+
     setSaving(true);
     try {
       const productToSave: Product = {
-        id: editingProduct.id || '',
+        id: editingProduct.id || '', // Service handles empty ID as Create
         name: editingProduct.name,
         sku: editingProduct.sku,
         price: editingProduct.price || 0,
@@ -98,7 +116,7 @@ const Products: React.FC = () => {
       await inventoryService.saveProduct(productToSave);
       setIsModalOpen(false);
       setEditingProduct(null);
-      loadInventory();
+      await loadInventory(); // Refresh list to get new IDs/Dates
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -117,7 +135,7 @@ const Products: React.FC = () => {
           <button onClick={handleExport} className="flex items-center gap-3 px-8 py-5 bg-white border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition-all shadow-sm">
             <Download size={16} /> Export CSV
           </button>
-          <button 
+          <button
             onClick={() => { setEditingProduct({ status: ProductStatus.DRAFT, stock: 0, price: 0, category: 'Tops', image: '' }); setIsModalOpen(true); }}
             className="bg-[#0f172a] text-white px-10 py-5 rounded-[28px] font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl hover:scale-105 transition-transform active:scale-95"
           >
@@ -131,9 +149,9 @@ const Products: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8 items-center mb-12">
           <div className="relative flex-1 group">
             <Search size={20} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Filter by SKU or artifact name..." 
+            <input
+              type="text"
+              placeholder="Filter by SKU or artifact name..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               className="w-full pl-20 pr-10 py-6 bg-slate-50 border border-slate-100 rounded-[32px] text-[11px] font-bold uppercase tracking-widest focus:ring-4 focus:ring-rose-500/5 transition-all outline-none"
@@ -184,20 +202,19 @@ const Products: React.FC = () => {
                   </td>
                   <td className="px-8 py-10 text-center">
                     <div className="inline-flex items-center bg-slate-50 rounded-2xl p-2 gap-4 border border-slate-100">
-                      <button onClick={() => handleAdjustStock(product, -1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronDown size={14}/></button>
+                      <button onClick={() => handleAdjustStock(product, -1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronDown size={14} /></button>
                       <span className={`text-sm font-black w-8 ${product.stock < 10 ? 'text-rose-500' : 'text-slate-900'}`}>{product.stock}</span>
-                      <button onClick={() => handleAdjustStock(product, 1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronUp size={14}/></button>
+                      <button onClick={() => handleAdjustStock(product, 1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronUp size={14} /></button>
                     </div>
                   </td>
                   <td className="px-8 py-10 font-black text-slate-900 serif text-lg italic">${product.price.toFixed(2)}</td>
                   <td className="px-8 py-10">
-                    <button 
-                      onClick={() => handleStatusToggle(product)} 
-                      className={`px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border transition-all ${
-                        product.status === ProductStatus.ACTIVE 
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
-                        : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
-                      }`}
+                    <button
+                      onClick={() => handleStatusToggle(product)}
+                      className={`px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border transition-all ${product.status === ProductStatus.ACTIVE
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                          : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
+                        }`}
                     >
                       {product.status}
                     </button>
@@ -226,8 +243,8 @@ const Products: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/10">
           <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
-          <form 
-            onSubmit={handleSave} 
+          <form
+            onSubmit={handleSave}
             className="relative w-full max-w-3xl bg-white rounded-[70px] p-16 space-y-12 animate-in zoom-in-95 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-slate-50"
           >
             <div className="flex justify-between items-start">
@@ -259,17 +276,17 @@ const Products: React.FC = () => {
                       <span className="text-[9px] font-black uppercase tracking-widest">Asset Upload</span>
                     </div>
                   )}
-                  <input 
-                    type="url" 
+                  <input
+                    type="url"
                     name="image"
-                    value={editingProduct?.image || ''} 
+                    value={editingProduct?.image || ''}
                     onChange={handleChange}
                     className="absolute inset-0 opacity-0 cursor-pointer"
                     placeholder="URL ONLY FOR DEMO"
                   />
                 </div>
                 <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100/50">
-                   <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest text-center">Visual artifacts must be high-res 4:5 aspect ratio.</p>
+                  <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest text-center">Visual artifacts must be high-res 4:5 aspect ratio.</p>
                 </div>
               </div>
 
@@ -278,24 +295,24 @@ const Products: React.FC = () => {
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Object Name</label>
-                    <input 
+                    <input
                       name="name"
-                      value={editingProduct?.name || ''} 
-                      onChange={handleChange} 
-                      placeholder="HONGDAE TENNIS MINI SKIRT" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
-                      required 
+                      value={editingProduct?.name || ''}
+                      onChange={handleChange}
+                      placeholder="HONGDAE TENNIS MINI SKIRT"
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm"
+                      required
                     />
                   </div>
                   <div className="space-y-3">
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Identity SKU</label>
-                    <input 
+                    <input
                       name="sku"
-                      value={editingProduct?.sku || ''} 
-                      onChange={handleChange} 
-                      placeholder="SM-002" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
-                      required 
+                      value={editingProduct?.sku || ''}
+                      onChange={handleChange}
+                      placeholder="SM-002"
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm"
+                      required
                     />
                   </div>
                 </div>
@@ -303,56 +320,56 @@ const Products: React.FC = () => {
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Price Point ($)</label>
-                    <input 
+                    <input
                       name="price"
-                      type="number" 
+                      type="number"
                       step="0.01"
-                      value={editingProduct?.price || ''} 
-                      onChange={handleChange} 
-                      placeholder="35.00" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
-                      required 
+                      value={editingProduct?.price || ''}
+                      onChange={handleChange}
+                      placeholder="35.00"
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm"
+                      required
                     />
                   </div>
                   <div className="space-y-3">
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Initial Reserve</label>
-                    <input 
+                    <input
                       name="stock"
-                      type="number" 
-                      value={editingProduct?.stock || ''} 
-                      onChange={handleChange} 
-                      placeholder="120" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
-                      required 
+                      type="number"
+                      value={editingProduct?.stock || ''}
+                      onChange={handleChange}
+                      placeholder="120"
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm"
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Department</label>
-                    <select 
-                      name="category"
-                      value={editingProduct?.category || 'Tops'} 
-                      onChange={handleChange}
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm appearance-none cursor-pointer"
-                    >
-                      {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Department</label>
+                  <select
+                    name="category"
+                    value={editingProduct?.category || 'Tops'}
+                    onChange={handleChange}
+                    className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm appearance-none cursor-pointer"
+                  >
+                    {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
               </div>
             </div>
 
             <div className="flex gap-8 pt-8">
-              <button 
-                type="button" 
-                onClick={() => setIsModalOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-7 bg-[#f1f5f9] text-[#0f172a] rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-slate-200 transition-all active:scale-95"
               >
                 Discard Draft
               </button>
-              <button 
-                type="submit" 
-                disabled={saving} 
+              <button
+                type="submit"
+                disabled={saving}
                 className="flex-1 py-7 bg-[#0f172a] text-white rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-[#1e293b] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-4"
               >
                 {saving ? <Loader2 className="animate-spin" size={16} /> : <Check size={18} />}
