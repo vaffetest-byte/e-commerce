@@ -71,7 +71,7 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
           </div>
         </div>
         <button onClick={onNavigateToHome} className="p-3 md:p-4 hover:bg-black/5 rounded-full">
-          <X size={24} md:size={32} strokeWidth={1} />
+          <X size={24} className="md:w-8 md:h-8" strokeWidth={1} />
         </button>
       </nav>
 
@@ -116,7 +116,7 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
           <div className="bg-white border border-black/[0.05] rounded-[40px] md:rounded-[60px] p-8 md:p-16 shadow-sm space-y-10 relative overflow-hidden">
             <div className="flex justify-between items-center">
                <h2 className="serif text-4xl md:text-8xl italic font-light tracking-tighter">Design <span className="not-italic font-black">Synthesis</span></h2>
-               <Cpu size={20} md:size={24} className="text-slate-200" />
+               <Cpu size={20} className="md:w-6 md:h-6 text-slate-200" />
             </div>
 
             <div className="space-y-6">

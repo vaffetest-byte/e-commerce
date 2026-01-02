@@ -180,19 +180,19 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts, onNaviga
           <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
             <div className="flex justify-between items-center mb-10 md:mb-16">
               <div className="flex items-center gap-4 md:gap-6">
-                 <Command size={20} className="text-rose-500" />
+                 <Command size={20} className="text-rose-500 md:w-6 md:h-6" />
                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-black/20 italic">Curated Registry / Semantic Search</span>
               </div>
               <button 
                 onClick={() => setIsSearchActive(false)}
                 className="p-3 md:p-4 hover:bg-slate-50 rounded-full transition-all group"
               >
-                <X size={24} md:size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                <X size={24} strokeWidth={1} className="md:w-8 md:h-8 group-hover:rotate-90 transition-transform duration-500" />
               </button>
             </div>
 
             <div className="relative mb-12 md:mb-20 group">
-              <Search className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-black/10 group-focus-within:text-rose-500 transition-colors" size={24} md:size={32} strokeWidth={1.5} />
+              <Search size={24} strokeWidth={1.5} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-black/10 group-focus-within:text-rose-500 transition-colors md:w-8 md:h-8" />
               <input 
                 ref={overlaySearchInputRef}
                 type="text"
@@ -208,7 +208,7 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts, onNaviga
                 <div className="p-8 md:p-12 bg-black text-white rounded-[40px] md:rounded-[60px] shadow-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-3xl pointer-events-none" />
                   <div className="flex items-center gap-4 mb-6 md:mb-8">
-                    <Sparkles size={16} md:size={20} className="text-rose-500" />
+                    <Sparkles size={16} className="text-rose-500 md:w-5 md:h-5" />
                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Muse Stylist Insight</span>
                   </div>
                   <div className="min-h-[100px] md:min-h-[140px] flex flex-col justify-center">
@@ -267,7 +267,7 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts, onNaviga
                   </div>
                 ) : (
                   <div className="h-full py-20 flex flex-col items-center justify-center text-center opacity-10">
-                    <Search size={80} md:size={120} strokeWidth={0.5} className="mb-6" />
+                    <Search size={80} strokeWidth={0.5} className="mb-6 md:w-32 md:h-32" />
                     <p className="serif text-2xl md:text-4xl italic">Archive empty.</p>
                   </div>
                 )}
@@ -410,7 +410,7 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts, onNaviga
                 <div className="flex justify-between items-center mb-8 sm:mb-16 md:mb-32">
                     <h2 className="serif text-4xl sm:text-5xl md:text-7xl italic leading-none">Your <br/><span className="font-bold not-italic tracking-tighter text-rose-600">Collection</span></h2>
                     <button onClick={() => setIsCartOpen(false)} className="group p-2 sm:p-3 md:p-5 rounded-full border border-black/5 hover:border-rose-500 transition-all">
-                        <X size={24} md:size={36} strokeWidth={1} />
+                        <X size={24} className="md:w-9 md:h-9" strokeWidth={1} />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-8 sm:space-y-12 md:space-y-20 no-scrollbar">

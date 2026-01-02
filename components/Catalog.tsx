@@ -226,7 +226,7 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
                   />
                   <div className="absolute inset-0 flex items-center justify-center sm:opacity-0 group-hover:opacity-100 transition-all">
                     <div className="bg-white/90 backdrop-blur-md px-6 md:px-10 py-3 md:py-5 rounded-full flex items-center gap-3 md:gap-4 shadow-2xl">
-                      <Eye size={14} md:size={16} className="text-rose-500" />
+                      <Eye size={14} className="text-rose-500 md:w-4 md:h-4" />
                       <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em]">Observe</span>
                     </div>
                   </div>
@@ -247,7 +247,7 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
                   </h3>
                   <div className="flex items-center justify-between border-b border-black/5 pb-4 md:pb-6">
                     <p className="text-base sm:text-lg md:text-xl font-medium tracking-tighter text-black/30">${product.price.toFixed(2)}</p>
-                    <ArrowRight size={14} md:size={16} className="text-black/5 group-hover:text-rose-500 transition-all group-hover:translate-x-2" />
+                    <ArrowRight size={14} className="text-black/5 md:w-4 md:h-4 group-hover:text-rose-500 transition-all group-hover:translate-x-2" />
                   </div>
                 </div>
               </div>
@@ -275,7 +275,7 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
               onClick={() => setSelectedProduct(null)}
               className="absolute top-4 sm:top-6 right-4 sm:right-6 z-50 p-2 sm:p-3 hover:bg-slate-50 rounded-full transition-all"
             >
-              <X size={20} sm:size={24} strokeWidth={1} />
+              <X size={20} strokeWidth={1} className="sm:w-6 sm:h-6" />
             </button>
 
             <div className="md:w-1/2 min-h-[40vh] md:min-h-0 bg-slate-100 overflow-hidden">

@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
                 ].map((s, i) => (
                 <div key={i} className="bg-white p-5 md:p-8 rounded-3xl md:rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all group cursor-default">
                     <div className={`w-10 h-10 md:w-12 md:h-12 ${s.bg} ${s.color} rounded-xl md:rounded-[18px] flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform`}>
-                        <s.icon size={18} md:size={20} strokeWidth={2} />
+                        <s.icon size={20} />
                     </div>
                     <div className="flex justify-between items-baseline mb-1">
                         <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] text-black/30">{s.label}</p>
@@ -98,7 +98,7 @@ const Dashboard: React.FC = () => {
                 <div className="relative z-10 flex flex-col md:flex-row gap-8 md:gap-12 items-start">
                     <div className="shrink-0 mx-auto md:mx-0">
                         <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[30px] bg-rose-600 flex items-center justify-center text-white shadow-[0_20px_40px_-10px_rgba(225,29,72,0.4)] group-hover:rotate-12 transition-transform duration-700">
-                            <Sparkles size={28} md:size={32} strokeWidth={1} />
+                            <Sparkles size={28} className="md:w-8 md:h-8" strokeWidth={1} />
                         </div>
                     </div>
                     <div className="flex-1 w-full text-center md:text-left">
@@ -109,7 +109,7 @@ const Dashboard: React.FC = () => {
                         <div className="max-w-3xl">
                             {loadingInsight ? (
                                 <div className="flex items-center justify-center md:justify-start gap-4 md:gap-6 text-white/30 italic text-lg md:text-xl font-light serif">
-                                    <Loader2 size={18} md:size={20} className="animate-spin" />
+                                    <Loader2 size={18} className="animate-spin md:w-5 md:h-5" />
                                     Synthesizing high-fashion market signals...
                                 </div>
                             ) : (
@@ -162,7 +162,7 @@ const Dashboard: React.FC = () => {
                     {recentActivities.map((act, i) => (
                         <div key={i} className="flex gap-4 md:gap-6 group">
                             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center ${act.color} group-hover:bg-white group-hover:shadow-md transition-all shrink-0`}>
-                                <act.icon size={14} md:size={16} strokeWidth={2.5} />
+                                <act.icon size={14} className="md:w-4 md:h-4" strokeWidth={2.5} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-baseline gap-2 mb-1">

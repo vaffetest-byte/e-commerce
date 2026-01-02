@@ -188,7 +188,7 @@ export const inventoryService = {
       if (!error) return;
     }
     const orders = getLocal(KEYS.ORDERS, MOCK_ORDERS);
-    const idx = orders.findIndex(o => o.id === orderId);
+    const idx = orders.findIndex((o: Order) => o.id === orderId);
     if (idx > -1) {
       orders[idx].status = status;
       setLocal(KEYS.ORDERS, orders);
@@ -212,7 +212,7 @@ export const inventoryService = {
       if (!error) return;
     }
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
-    const idx = coupons.findIndex(c => c.id === coupon.id);
+    const idx = coupons.findIndex((c: Coupon) => c.id === coupon.id);
     if (idx > -1) coupons[idx] = coupon;
     else coupons.push({ ...coupon, id: coupon.id || `cp-${Date.now()}` });
     setLocal(KEYS.COUPONS, coupons);
@@ -224,7 +224,7 @@ export const inventoryService = {
       if (!error) return;
     }
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
-    setLocal(KEYS.COUPONS, coupons.filter(c => c.id !== id));
+    setLocal(KEYS.COUPONS, coupons.filter((c: Coupon) => c.id !== id));
   },
 
   /**
