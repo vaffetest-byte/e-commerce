@@ -4,6 +4,9 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Storefront from './components/Storefront';
+import Catalog from './components/Catalog';
+import Manifesto from './components/Manifesto';
+import Lab from './components/Lab';
 import Orders from './components/Orders';
 import Customers from './components/Customers';
 import Marketing from './components/Marketing';
@@ -13,6 +16,7 @@ import { inventoryService } from './services/inventoryService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'store' | 'admin'>('store');
+  const [storeSubView, setStoreSubView] = useState<'home' | 'catalog' | 'manifesto' | 'lab'>('home');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activePath, setActivePath] = useState<string>('/');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -110,7 +114,38 @@ const App: React.FC = () => {
   if (view === 'store') {
     return (
       <div className="animate-in fade-in duration-1000">
-        <Storefront products={products} setProducts={setProducts} />
+        {storeSubView === 'home' && (
+          <Storefront 
+            products={products} 
+            setProducts={setProducts} 
+            onNavigateToCatalog={() => setStoreSubView('catalog')} 
+            onNavigateToManifesto={() => setStoreSubView('manifesto')}
+            onNavigateToLab={() => setStoreSubView('lab')}
+          />
+        )}
+        {storeSubView === 'catalog' && (
+          <Catalog 
+            products={products} 
+            setProducts={setProducts} 
+            onNavigateToHome={() => setStoreSubView('home')} 
+            onNavigateToManifesto={() => setStoreSubView('manifesto')}
+            onNavigateToLab={() => setStoreSubView('lab')}
+          />
+        )}
+        {storeSubView === 'manifesto' && (
+          <Manifesto 
+            onNavigateToHome={() => setStoreSubView('home')} 
+            onNavigateToCatalog={() => setStoreSubView('catalog')}
+            onNavigateToLab={() => setStoreSubView('lab')}
+          />
+        )}
+        {storeSubView === 'lab' && (
+          <Lab 
+            onNavigateToHome={() => setStoreSubView('home')} 
+            onNavigateToCatalog={() => setStoreSubView('catalog')}
+            onNavigateToManifesto={() => setStoreSubView('manifesto')}
+          />
+        )}
         <ViewToggle />
       </div>
     );
@@ -213,7 +248,7 @@ const App: React.FC = () => {
         onNavigate={setActivePath}
       >
         {activePath === '/' && <Dashboard />}
-        {activePath === '/products' && <Products />}
+        {activePath === '/products' && <Products onUpdate={syncAllData} />}
         {activePath === '/orders' && <Orders orders={orders} onUpdateOrder={syncAllData} />}
         {activePath === '/customers' && <Customers customers={customers} />}
         {activePath === '/marketing' && <Marketing onUpdateCoupon={syncAllData} />}

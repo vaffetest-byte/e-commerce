@@ -1,18 +1,22 @@
+
 import { GoogleGenAI } from "@google/genai";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Always initialize with the direct process.env.API_KEY object as per guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getDashboardInsight = async (stats: any) => {
   try {
-    const ai = getAI();
-    const prompt = `Act as a senior high-fashion trend forecaster for a luxury boutique in Seoul. 
-    Sales: $${stats.totalRevenue}, Orders: ${stats.totalOrders}.
+    // Trend forecasting is a complex task requiring high-quality reasoning, thus using gemini-3-pro-preview
+    const prompt = `Sales: $${stats.totalRevenue}, Orders: ${stats.totalOrders}.
     Analyze performance and predict the next "premium" K-fashion trend.
     Provide 3 sophisticated, data-driven bullet points. Keep it professional and luxury-toned.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: prompt,
+      config: {
+        systemInstruction: "Act as a senior high-fashion trend forecaster for a luxury boutique in Seoul.",
+      }
     });
     return String(response.text || "Optimizing Seoul's market velocity...");
   } catch (error) {
@@ -23,7 +27,6 @@ export const getDashboardInsight = async (stats: any) => {
 
 export const getTrendRadar = async () => {
   try {
-    const ai = getAI();
     const prompt = `Provide a 1-sentence "Haute Couture Alert" from the Seoul fashion scene today. Use sophisticated vocabulary. Under 15 words. Mention a specific district like Seongsu, Hannam, or Cheongdam.`;
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -37,8 +40,7 @@ export const getTrendRadar = async () => {
 
 export const getFashionAdvice = async (productName: string) => {
   try {
-    const ai = getAI();
-    const prompt = `You are a celebrity head-stylist in Cheongdam-dong, Seoul. Create a "Curated Styling Protocol" for: "${productName}". 
+    const prompt = `Create a "Curated Styling Protocol" for: "${productName}". 
     Format:
     CONCEPT: [1 word]
     EQUIPMENT: [1 accessory]
@@ -47,6 +49,9 @@ export const getFashionAdvice = async (productName: string) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
+      config: {
+        systemInstruction: "You are a celebrity head-stylist in Cheongdam-dong, Seoul.",
+      }
     });
     return String(response.text || "CONCEPT: Avant-Garde | EQUIPMENT: Silver Choker | DESTINATION: Gallery opening in Samcheong-dong");
   } catch (error) {
@@ -56,7 +61,6 @@ export const getFashionAdvice = async (productName: string) => {
 
 export const generateProductDescription = async (productName: string, category: string) => {
   try {
-    const ai = getAI();
     const prompt = `Write a premium, editorial-style product description for a designer fashion item: "${productName}" (${category}). 
     Tone: Sophisticated, Minimalist, Seoul-Aesthetic. Include 2-3 brief quality highlights. Under 50 words.`;
     

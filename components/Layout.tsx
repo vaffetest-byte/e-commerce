@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -12,7 +11,8 @@ import {
   X, 
   Bell, 
   Search,
-  ChevronDown
+  ChevronDown,
+  Monitor
 } from 'lucide-react';
 import { NAVIGATION } from '../constants';
 import { User, Role } from '../types';
@@ -74,7 +74,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, o
           {/* Navigation */}
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar">
             {filteredNav.map((item) => {
-              const Icon = IconMap[item.icon] || LayoutDashboard; // Fallback to Dashboard icon if missing
+              const Icon = IconMap[item.icon] || LayoutDashboard; 
               const isActive = activePath === item.path;
               return (
                 <button
@@ -103,10 +103,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, o
             <div className="bg-white/5 rounded-3xl p-6 mb-4">
                <div className="flex items-center gap-3 mb-4">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Encrypted Session</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">System Verified</span>
                </div>
                <p className="text-[10px] font-medium text-slate-400 leading-relaxed italic">
-                 "Style is a way to say who you are without having to speak."
+                 "Architecture is frozen music." - Seongsu Atelier
                </p>
             </div>
             <button 
@@ -132,13 +132,23 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, o
               <Search size={18} className="text-slate-300 group-focus-within:text-rose-500" />
               <input 
                 type="text" 
-                placeholder="UNIVERSAL SEARCH..." 
+                placeholder="UNIVERSAL REGISTRY SEARCH..." 
                 className="bg-transparent border-none focus:outline-none w-full text-[10px] font-bold text-slate-900 tracking-widest uppercase placeholder:text-slate-300"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-8">
+            <div className="hidden lg:flex items-center gap-4 border-r border-slate-100 pr-8">
+                <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1">Live Engine</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Normal</span>
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    </div>
+                </div>
+            </div>
+
             <div className="hidden sm:flex flex-col items-end">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-slate-900 tracking-widest uppercase">{user.name}</span>
@@ -156,7 +166,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, o
                   alt="Profile" 
                   className="w-12 h-12 rounded-2xl border-2 border-slate-50 shadow-md group-hover:scale-105 transition-transform"
                 />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
             </button>
           </div>
         </header>

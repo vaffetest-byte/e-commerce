@@ -24,39 +24,59 @@ initStore();
 export const inventoryService = {
   // --- PRODUCT ENGINE ---
   async getProducts(filters?: InventoryFilters): Promise<Product[]> {
-    let products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
-    products = products.filter((p: Product) => p.status !== ProductStatus.ARCHIVED);
-
-    if (filters) {
-      if (filters.search) {
-        const s = filters.search.toLowerCase();
-        products = products.filter((p: Product) => p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s));
-      }
-      if (filters.status !== 'All') products = products.filter((p: Product) => p.status === filters.status);
-      if (filters.category !== 'All') products = products.filter((p: Product) => p.category === filters.category);
+    try {
+      const stored = localStorage.getItem(KEYS.PRODUCTS);
+      let products = JSON.parse(stored || '[]');
       
-      products.sort((a: any, b: any) => {
-        const factor = filters.sortOrder === 'asc' ? 1 : -1;
-        return a[filters.sortBy] < b[filters.sortBy] ? -1 * factor : 1 * factor;
-      });
-    }
+      // Filter out nulls or invalid entries
+      products = products.filter((p: Product) => p && p.id);
 
-    return products;
+      if (filters) {
+        if (filters.search) {
+          const s = filters.search.toLowerCase();
+          products = products.filter((p: Product) => 
+            p.name.toLowerCase().includes(s) || 
+            p.sku.toLowerCase().includes(s) ||
+            (p.collection && p.collection.toLowerCase().includes(s))
+          );
+        }
+        if (filters.status !== 'All') products = products.filter((p: Product) => p.status === filters.status);
+        if (filters.category !== 'All') products = products.filter((p: Product) => p.category === filters.category);
+        
+        products.sort((a: any, b: any) => {
+          const factor = filters.sortOrder === 'asc' ? 1 : -1;
+          const valA = a[filters.sortBy] ?? '';
+          const valB = b[filters.sortBy] ?? '';
+          return valA < valB ? -1 * factor : 1 * factor;
+        });
+      }
+
+      return products;
+    } catch (error) {
+      console.error("Critical Inventory Load Error:", error);
+      return [];
+    }
   },
 
   async saveProduct(product: Product): Promise<Product> {
     const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
-    const existingSku = products.find((p: Product) => p.sku === product.sku && p.id !== product.id);
-    if (existingSku) throw new Error("SKU Collision: Identifier already exists in registry.");
+    
+    // Integrity check: SKU must be unique across non-deleted products
+    const duplicateSku = products.find((p: Product) => 
+      p.sku.trim().toLowerCase() === product.sku.trim().toLowerCase() && 
+      p.id !== product.id
+    );
+    if (duplicateSku) throw new Error(`SKU Conflict: Identifier "${product.sku}" is already registered to another artifact.`);
 
     const index = products.findIndex((p: Product) => p.id === product.id);
-    const updatedProduct = { ...product, updatedAt: new Date().toISOString() };
+    const timestamp = new Date().toISOString();
+    const updatedProduct = { ...product, updatedAt: timestamp };
     
     if (index > -1) {
       products[index] = updatedProduct;
     } else {
-      updatedProduct.id = `art-${Math.random().toString(36).substr(2, 9)}`;
-      updatedProduct.createdAt = new Date().toISOString();
+      updatedProduct.id = product.id || `art-${Math.random().toString(36).substr(2, 9)}`;
+      updatedProduct.createdAt = timestamp;
       products.push(updatedProduct);
     }
     
@@ -75,9 +95,35 @@ export const inventoryService = {
   },
 
   async deleteProduct(id: string): Promise<void> {
-    const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
-    const updatedProducts = products.filter((p: Product) => p.id !== id);
-    localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+    try {
+      // 1. Remove from Inventory Registry
+      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
+      const updatedProducts = products.filter((p: Product) => p.id !== id);
+      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+
+      // 2. Deep Cleanup: Remove from user carts (Local "Cache")
+      const cart = JSON.parse(localStorage.getItem(KEYS.CART) || '[]');
+      const updatedCart = cart.filter((item: any) => item.id !== id);
+      localStorage.setItem(KEYS.CART, JSON.stringify(updatedCart));
+
+      // 3. Deep Cleanup: Remove from user wishlists
+      const wishlist = JSON.parse(localStorage.getItem(KEYS.WISHLIST) || '[]');
+      const updatedWishlist = wishlist.filter((item: any) => item.id !== id);
+      localStorage.setItem(KEYS.WISHLIST, JSON.stringify(updatedWishlist));
+
+      // 4. Audit Log
+      const logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
+      logs.push({ 
+        action: 'DELETE_PRODUCT', 
+        targetId: id, 
+        timestamp: new Date().toISOString(),
+        details: 'Permanent removal from registry and all customer sessions.'
+      });
+      localStorage.setItem(KEYS.LOGS, JSON.stringify(logs.slice(-500))); // Store more logs
+    } catch (error) {
+      console.error("Deletion Protocol Error:", error);
+      throw new Error("System failed to execute deletion protocol. Registry integrity remains protected.");
+    }
   },
 
   // --- ORDER FULFILLMENT ---
@@ -91,7 +137,8 @@ export const inventoryService = {
     
     for (const item of orderData.items || []) {
       const p = products.find((prod: Product) => prod.id === item.productId);
-      if (!p || p.stock < item.quantity) throw new Error(`Insufficient stock for artifact: ${item.name}`);
+      if (!p) throw new Error(`Artifact Missing: ${item.name} no longer exists.`);
+      if (p.stock < item.quantity) throw new Error(`Insufficient Velocity: ${item.name} out of stock.`);
     }
 
     for (const item of orderData.items || []) {
@@ -153,8 +200,16 @@ export const inventoryService = {
   // --- DATA EXPORT ---
   async exportCSV(filters: InventoryFilters): Promise<string> {
     const products = await this.getProducts(filters);
-    const headers = ['SKU', 'Name', 'Category', 'Stock', 'Price', 'Status'];
-    const rows = products.map(p => [p.sku, p.name, p.category, p.stock, p.price, p.status].join(','));
+    const headers = ['SKU', 'Name', 'Category', 'Collection', 'Stock', 'Price', 'Status'];
+    const rows = products.map(p => [
+      p.sku, 
+      `"${p.name.replace(/"/g, '""')}"`, 
+      p.category, 
+      `"${(p.collection || '').replace(/"/g, '""')}"`, 
+      p.stock, 
+      p.price, 
+      p.status
+    ].join(','));
     return [headers.join(','), ...rows].join('\n');
   }
 };

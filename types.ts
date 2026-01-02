@@ -36,6 +36,7 @@ export interface Product {
   stock: number;
   status: ProductStatus;
   category: string;
+  collection?: string;
   image: string;
   socialHeat?: number;
   createdAt?: string;
