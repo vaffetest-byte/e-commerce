@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Plus, Search, Filter, Edit2, Trash2, Sparkles, 
+  Plus, Search, Edit2, Trash2, Sparkles, 
   Loader2, ChevronUp, ChevronDown, Download, 
   X, Image as ImageIcon, Check, AlertCircle,
-  ArrowUpDown, Wand2
+  ArrowUpDown, Wand2, Upload
 } from 'lucide-react';
 import { ProductStatus, Product, InventoryFilters } from '../types';
 import { generateProductDescription } from '../geminiService';
@@ -26,8 +25,6 @@ const Products: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
-  const [aiDescription, setAiDescription] = useState('');
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadInventory = useCallback(async () => {
@@ -35,8 +32,6 @@ const Products: React.FC = () => {
     try {
       const data = await inventoryService.getProducts(filters);
       setProducts(data);
-    } catch (err) {
-      console.error("Failed to load inventory", err);
     } finally {
       setLoading(false);
     }
@@ -47,10 +42,9 @@ const Products: React.FC = () => {
   }, [loadInventory]);
 
   const handleAdjustStock = async (product: Product, delta: number) => {
-    const newStock = Math.max(0, product.stock + delta);
-    const updated = { ...product, stock: newStock };
-    await inventoryService.saveProduct(updated);
-    loadInventory();
+    if (product.stock + delta < 0) return;
+    setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + delta } : p));
+    await inventoryService.adjustStock(product.id, delta);
   };
 
   const handleStatusToggle = async (product: Product) => {
@@ -60,7 +54,7 @@ const Products: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure? This product will be removed from the active catalog.")) {
+    if (window.confirm("Archive this product? It will be hidden from the storefront.")) {
       await inventoryService.deleteProduct(id);
       loadInventory();
     }
@@ -72,19 +66,16 @@ const Products: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `inventory-report.csv`;
     a.click();
   };
 
-  const generateAIContent = async () => {
-    if (!editingProduct?.name || !editingProduct?.category) {
-      alert("Please provide a name and category first.");
-      return;
-    }
-    setIsGeneratingDesc(true);
-    const desc = await generateProductDescription(editingProduct.name, editingProduct.category);
-    setAiDescription(desc || '');
-    setIsGeneratingDesc(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setEditingProduct(prev => ({
+      ...prev!,
+      [name]: type === 'number' ? parseFloat(value) : value
+    }));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -93,359 +84,282 @@ const Products: React.FC = () => {
     
     setSaving(true);
     try {
-      // Ensure we have all required fields for the service
       const productToSave: Product = {
-        id: editingProduct.id || `p-${Math.random().toString(36).substr(2, 9)}`,
+        id: editingProduct.id || '',
         name: editingProduct.name,
         sku: editingProduct.sku,
         price: editingProduct.price || 0,
         stock: editingProduct.stock || 0,
         status: editingProduct.status || ProductStatus.DRAFT,
         category: editingProduct.category || 'Tops',
-        image: editingProduct.image || 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&q=80&w=800'
+        image: editingProduct.image || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800'
       };
 
       await inventoryService.saveProduct(productToSave);
       setIsModalOpen(false);
       setEditingProduct(null);
-      setAiDescription('');
       loadInventory();
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const getStatusColor = (status: ProductStatus) => {
-    switch (status) {
-      case ProductStatus.ACTIVE: return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case ProductStatus.DRAFT: return 'bg-amber-50 text-amber-600 border-amber-100';
-      case ProductStatus.ARCHIVED: return 'bg-rose-50 text-rose-600 border-rose-100';
-    }
-  };
-
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+    <div className="space-y-12 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 px-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500 block mb-4">Stock Intelligence</span>
-          <h1 className="text-4xl font-extrabold tracking-tighter text-slate-900">Inventory Control</h1>
+          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-500 block mb-4 italic">Registry & Logistics</span>
+          <h1 className="text-5xl font-black tracking-tighter text-slate-900 serif italic">Inventory <span className="not-italic font-extrabold text-[#0f172a]">Command</span></h1>
         </div>
         <div className="flex items-center gap-4">
-          <button 
-            onClick={handleExport}
-            className="flex items-center gap-3 px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 hover:shadow-xl transition-all"
-          >
-            <Download size={16} />
-            Export Data
+          <button onClick={handleExport} className="flex items-center gap-3 px-8 py-5 bg-white border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition-all shadow-sm">
+            <Download size={16} /> Export CSV
           </button>
           <button 
-            onClick={() => {
-              setEditingProduct({ status: ProductStatus.DRAFT, stock: 0, price: 0, category: 'Tops' });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl hover:bg-rose-500 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-slate-200"
+            onClick={() => { setEditingProduct({ status: ProductStatus.DRAFT, stock: 0, price: 0, category: 'Tops', image: '' }); setIsModalOpen(true); }}
+            className="bg-[#0f172a] text-white px-10 py-5 rounded-[28px] font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl hover:scale-105 transition-transform active:scale-95"
           >
-            <Plus size={18} />
-            Catalog New Item
+            <Plus size={18} className="inline mr-2" /> New Entry
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-8">
-        <div className="flex flex-col lg:flex-row gap-6 items-center">
+      {/* Main Table Container */}
+      <div className="bg-white rounded-[60px] border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.02)] p-12 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-8 items-center mb-12">
           <div className="relative flex-1 group">
-            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" />
+            <Search size={20} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" />
             <input 
               type="text" 
-              placeholder="QUERY BY NAME OR SKU..." 
+              placeholder="Filter by SKU or artifact name..." 
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full pl-16 pr-8 py-5 bg-slate-50 border border-slate-100 rounded-[24px] text-[11px] font-bold uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-rose-500/5 focus:bg-white focus:border-rose-200 transition-all"
+              className="w-full pl-20 pr-10 py-6 bg-slate-50 border border-slate-100 rounded-[32px] text-[11px] font-bold uppercase tracking-widest focus:ring-4 focus:ring-rose-500/5 transition-all outline-none"
             />
           </div>
-          
-          <div className="flex flex-wrap items-center gap-4">
-            <select 
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              className="px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 focus:outline-none focus:bg-white transition-all"
-            >
-              {CATEGORIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+          <div className="flex gap-4">
+            <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="px-8 py-6 bg-slate-50 border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors">
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-
-            <select 
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
-              className="px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 focus:outline-none focus:bg-white transition-all"
-            >
-              <option value="All">ALL STATUS</option>
-              <option value={ProductStatus.ACTIVE}>ACTIVE</option>
-              <option value={ProductStatus.DRAFT}>DRAFT</option>
-              <option value={ProductStatus.ARCHIVED}>ARCHIVED</option>
-            </select>
-
-            <select 
-              value={filters.stockLevel}
-              onChange={(e) => setFilters({ ...filters, stockLevel: e.target.value as any })}
-              className="px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 focus:outline-none focus:bg-white transition-all"
-            >
-              <option value="All">ANY STOCK</option>
-              <option value="Low">LOW STOCK (&lt;10)</option>
-              <option value="Out">OUT OF STOCK</option>
+            <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value as any })} className="px-8 py-6 bg-slate-50 border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors">
+              <option value="All">All Visibility</option>
+              <option value={ProductStatus.ACTIVE}>Live Store</option>
+              <option value={ProductStatus.DRAFT}>Hidden Draft</option>
             </select>
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-8">
+        <div className="overflow-x-auto -mx-12">
           <table className="w-full text-left">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  <button 
-                    className="flex items-center gap-2"
-                    onClick={() => setFilters({...filters, sortBy: 'name', sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc'})}
-                  >
-                    Product Detail <ArrowUpDown size={10} />
-                  </button>
-                </th>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU</th>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                   <button 
-                    className="flex items-center gap-2"
-                    onClick={() => setFilters({...filters, sortBy: 'stock', sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc'})}
-                  >
-                    Quantity <ArrowUpDown size={10} />
-                  </button>
-                </th>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  <button 
-                    className="flex items-center gap-2"
-                    onClick={() => setFilters({...filters, sortBy: 'price', sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc'})}
-                  >
-                    Price <ArrowUpDown size={10} />
-                  </button>
-                </th>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-12 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-16 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Visual Asset</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU Identifier</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Velocity (Stock)</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Acquisition Price</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Life Cycle</th>
+                <th className="px-16 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Protocol</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-32 text-center">
-                    <Loader2 size={32} className="animate-spin mx-auto text-rose-500 mb-4" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Synchronizing Ledger...</p>
-                  </td>
-                </tr>
-              ) : products.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-32 text-center">
-                    <AlertCircle size={32} className="mx-auto text-slate-200 mb-4" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No objects match your query.</p>
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="py-32 text-center"><Loader2 className="animate-spin mx-auto text-rose-500" size={32} /></td></tr>
               ) : products.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50/50 transition-all group">
-                  <td className="px-12 py-8">
-                    <div className="flex items-center gap-6">
-                      <img src={product.image} className="w-16 h-16 rounded-[20px] object-cover bg-slate-100 shadow-md border border-slate-100" />
+                <tr key={product.id} className="group hover:bg-[#fdfcfb] transition-all">
+                  <td className="px-16 py-10">
+                    <div className="flex items-center gap-8">
+                      <div className="w-16 h-16 rounded-[24px] overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+                        <img src={product.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                      </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900 tracking-tight">{product.name}</p>
-                        <p className="text-[9px] text-rose-500 font-black uppercase tracking-widest mt-1">{product.category}</p>
+                        <p className="text-sm font-black text-slate-900 tracking-tight leading-none mb-2">{product.name}</p>
+                        <p className="text-[9px] text-rose-500 font-black uppercase tracking-[0.4em] italic">{product.category}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-12 py-8 text-[11px] font-black text-slate-400 tracking-widest">{product.sku}</td>
-                  <td className="px-12 py-8">
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center">
-                        <button 
-                          onClick={() => handleAdjustStock(product, 1)}
-                          className="p-1 hover:text-rose-500 text-slate-300 transition-colors"
-                        >
-                          <ChevronUp size={16} />
-                        </button>
-                        <span className={`text-lg font-black tracking-tighter ${product.stock < 10 ? 'text-rose-500' : 'text-slate-900'}`}>
-                          {product.stock}
-                        </span>
-                        <button 
-                          onClick={() => handleAdjustStock(product, -1)}
-                          className="p-1 hover:text-rose-500 text-slate-300 transition-colors"
-                        >
-                          <ChevronDown size={16} />
-                        </button>
-                      </div>
-                      <div className="hidden sm:block w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-700 ${product.stock < 10 ? 'bg-rose-500' : 'bg-emerald-500'}`} 
-                          style={{ width: `${Math.min(100, (product.stock / 50) * 100)}%` }}
-                        />
-                      </div>
+                  <td className="px-8 py-10">
+                    <span className="text-[11px] font-black text-slate-400 tracking-[0.2em]">{product.sku}</span>
+                  </td>
+                  <td className="px-8 py-10 text-center">
+                    <div className="inline-flex items-center bg-slate-50 rounded-2xl p-2 gap-4 border border-slate-100">
+                      <button onClick={() => handleAdjustStock(product, -1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronDown size={14}/></button>
+                      <span className={`text-sm font-black w-8 ${product.stock < 10 ? 'text-rose-500' : 'text-slate-900'}`}>{product.stock}</span>
+                      <button onClick={() => handleAdjustStock(product, 1)} className="p-2 hover:bg-white hover:shadow-md rounded-xl transition-all"><ChevronUp size={14}/></button>
                     </div>
                   </td>
-                  <td className="px-12 py-8 text-lg font-black text-slate-900 tracking-tighter">${product.price.toFixed(2)}</td>
-                  <td className="px-12 py-8">
+                  <td className="px-8 py-10 font-black text-slate-900 serif text-lg italic">${product.price.toFixed(2)}</td>
+                  <td className="px-8 py-10">
                     <button 
-                      onClick={() => handleStatusToggle(product)}
-                      className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all hover:scale-105 active:scale-95 ${getStatusColor(product.status)}`}
+                      onClick={() => handleStatusToggle(product)} 
+                      className={`px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border transition-all ${
+                        product.status === ProductStatus.ACTIVE 
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
+                        : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
+                      }`}
                     >
                       {product.status}
                     </button>
                   </td>
-                  <td className="px-12 py-8 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                       <button 
-                          onClick={() => {
-                            setEditingProduct(product);
-                            setIsModalOpen(true);
-                          }}
-                          className="p-3 text-slate-300 hover:text-slate-900 hover:bg-white hover:shadow-lg rounded-2xl transition-all"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(product.id)}
-                          className="p-3 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                  <td className="px-16 py-10 text-right">
+                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="p-4 text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-lg rounded-2xl transition-all"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDelete(product.id)} className="p-4 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:shadow-lg rounded-2xl transition-all"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {!loading && products.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-40 text-center text-slate-300 italic serif text-2xl">
+                    No artifacts found in this category.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Designer Register Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-          <div className="relative w-full max-w-3xl bg-white rounded-[60px] shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-12 pt-12 pb-6 border-b border-slate-50 flex justify-between items-center">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/10">
+          <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
+          <form 
+            onSubmit={handleSave} 
+            className="relative w-full max-w-3xl bg-white rounded-[70px] p-16 space-y-12 animate-in zoom-in-95 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-slate-50"
+          >
+            <div className="flex justify-between items-start">
               <div>
-                <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest block mb-2">Item Definition</span>
-                <h2 className="text-3xl font-black tracking-tighter">{editingProduct?.id ? 'Adjust Object' : 'Register New Object'}</h2>
+                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-500 block mb-4 italic">Entry Form // Atelier</span>
+                <h2 className="text-5xl font-black tracking-tighter text-[#0f172a] serif italic leading-none">Register <span className="not-italic font-extrabold text-[#0f172a]">Object</span></h2>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-4 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors">
-                <X size={20} />
+              <button type="button" onClick={() => setIsModalOpen(false)} className="p-4 rounded-full bg-slate-50 hover:bg-rose-50 transition-colors group">
+                <X size={24} className="text-slate-300 group-hover:text-rose-500" />
               </button>
             </div>
-            
-            <form onSubmit={handleSave} className="p-12 space-y-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-2">
-                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Object Name</label>
-                   <input 
-                    type="text" 
-                    value={editingProduct?.name || ''} 
-                    onChange={e => setEditingProduct({...editingProduct!, name: e.target.value})}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold uppercase text-[11px] tracking-widest"
-                    required
-                   />
-                </div>
-                <div className="space-y-2">
-                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Unique SKU</label>
-                   <input 
-                    type="text" 
-                    value={editingProduct?.sku || ''} 
-                    onChange={e => setEditingProduct({...editingProduct!, sku: e.target.value})}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold uppercase text-[11px] tracking-widest"
-                    required
-                   />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-8">
-                <div className="space-y-2">
-                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Price (USD)</label>
-                   <input 
-                    type="number" 
-                    value={editingProduct?.price || 0} 
-                    onChange={e => setEditingProduct({...editingProduct!, price: parseFloat(e.target.value)})}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold text-[11px]"
-                    required
-                   />
-                </div>
-                <div className="space-y-2">
-                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Stock</label>
-                   <input 
-                    type="number" 
-                    value={editingProduct?.stock || 0} 
-                    onChange={e => setEditingProduct({...editingProduct!, stock: parseInt(e.target.value)})}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold text-[11px]"
-                    required
-                   />
-                </div>
-                <div className="space-y-2">
-                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
-                   <select 
-                    value={editingProduct?.category || ''} 
-                    onChange={e => setEditingProduct({...editingProduct!, category: e.target.value})}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold uppercase text-[11px] tracking-widest"
-                   >
-                     {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                   </select>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Aesthetic Description (AI-Powered)</label>
-                  <button 
-                    type="button"
-                    onClick={generateAIContent}
-                    disabled={isGeneratingDesc}
-                    className="flex items-center gap-2 text-[9px] font-black text-rose-500 hover:text-rose-600 transition-colors disabled:opacity-50"
-                  >
-                    {isGeneratingDesc ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
-                    Magic Wand
-                  </button>
-                </div>
-                <textarea 
-                  value={aiDescription}
-                  onChange={(e) => setAiDescription(e.target.value)}
-                  placeholder="USE THE MAGIC WAND TO GENERATE..."
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-medium text-[11px] h-32 resize-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Visual Reference (URL)</label>
-                <div className="flex gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+              {/* Image Selection Area */}
+              <div className="md:col-span-4 flex flex-col gap-4">
+                <div className="aspect-[3/4] rounded-[50px] overflow-hidden bg-[#f8fafc] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center group relative cursor-pointer hover:border-rose-200 transition-all">
+                  {editingProduct?.image ? (
+                    <>
+                      <img src={editingProduct.image} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white border border-white/20 px-6 py-3 rounded-full backdrop-blur-md">Replace Vision</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-slate-300 group-hover:text-rose-400">
+                      <div className="p-6 bg-white rounded-full shadow-sm">
+                        <Upload size={32} strokeWidth={1.5} />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest">Asset Upload</span>
+                    </div>
+                  )}
                   <input 
-                    type="text" 
+                    type="url" 
+                    name="image"
                     value={editingProduct?.image || ''} 
-                    onChange={e => setEditingProduct({...editingProduct!, image: e.target.value})}
-                    className="flex-1 px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/5 font-bold text-[11px]"
-                    placeholder="https://images.unsplash.com/..."
-                    required
-                   />
-                   <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 overflow-hidden">
-                      {editingProduct?.image ? <img src={editingProduct.image} className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-300" />}
-                   </div>
+                    onChange={handleChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    placeholder="URL ONLY FOR DEMO"
+                  />
+                </div>
+                <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100/50">
+                   <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest text-center">Visual artifacts must be high-res 4:5 aspect ratio.</p>
                 </div>
               </div>
 
-              <div className="pt-6 flex gap-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-[24px] font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Discard Changes
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={saving}
-                  className="flex-1 py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase text-[10px] tracking-widest hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                  Commit Definition
-                </button>
+              {/* Data Inputs Area */}
+              <div className="md:col-span-8 space-y-8">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Object Name</label>
+                    <input 
+                      name="name"
+                      value={editingProduct?.name || ''} 
+                      onChange={handleChange} 
+                      placeholder="HONGDAE TENNIS MINI SKIRT" 
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      required 
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Identity SKU</label>
+                    <input 
+                      name="sku"
+                      value={editingProduct?.sku || ''} 
+                      onChange={handleChange} 
+                      placeholder="SM-002" 
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Price Point ($)</label>
+                    <input 
+                      name="price"
+                      type="number" 
+                      step="0.01"
+                      value={editingProduct?.price || ''} 
+                      onChange={handleChange} 
+                      placeholder="35.00" 
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      required 
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Initial Reserve</label>
+                    <input 
+                      name="stock"
+                      type="number" 
+                      value={editingProduct?.stock || ''} 
+                      onChange={handleChange} 
+                      placeholder="120" 
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Department</label>
+                    <select 
+                      name="category"
+                      value={editingProduct?.category || 'Tops'} 
+                      onChange={handleChange}
+                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm appearance-none cursor-pointer"
+                    >
+                      {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
               </div>
-            </form>
-          </div>
+            </div>
+
+            <div className="flex gap-8 pt-8">
+              <button 
+                type="button" 
+                onClick={() => setIsModalOpen(false)} 
+                className="flex-1 py-7 bg-[#f1f5f9] text-[#0f172a] rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-slate-200 transition-all active:scale-95"
+              >
+                Discard Draft
+              </button>
+              <button 
+                type="submit" 
+                disabled={saving} 
+                className="flex-1 py-7 bg-[#0f172a] text-white rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-[#1e293b] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-4"
+              >
+                {saving ? <Loader2 className="animate-spin" size={16} /> : <Check size={18} />}
+                {saving ? 'Syncing...' : 'Confirm Entry'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

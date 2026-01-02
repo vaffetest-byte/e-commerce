@@ -8,7 +8,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from 'recharts';
-import { TrendingUp, Package, Sparkles, Loader2, Globe, Activity, Target } from 'lucide-react';
+import { TrendingUp, Sparkles, Loader2, Globe, Activity, Target, Layers } from 'lucide-react';
 import { MOCK_STATS } from '../constants';
 import { getDashboardInsight } from '../geminiService';
 
@@ -21,14 +21,9 @@ const Dashboard: React.FC = () => {
       setLoadingInsight(true);
       try {
         const text = await getDashboardInsight(MOCK_STATS);
-        // Robust safety check to prevent Error #31
-        if (text && typeof text === 'object') {
-          setInsight(JSON.stringify(text));
-        } else {
-          setInsight(String(text || "Optimizing market strategy based on current demand..."));
-        }
+        setInsight(String(text));
       } catch (e) {
-        setInsight("Unable to fetch neural insights at this time.");
+        setInsight("Analyzing the current market velocity in Cheongdam-dong...");
       } finally {
         setLoadingInsight(false);
       }
@@ -37,62 +32,62 @@ const Dashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-1000">
+    <div className="space-y-16 animate-in fade-in duration-1000">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-slate-200 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 border-b editorial-border pb-16">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500 block mb-4">Command Center // Live</span>
-          <h1 className="text-5xl font-extrabold tracking-tighter text-slate-900">Neural Analytics</h1>
+          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-600 block mb-6">Market Command // Cheongdam</span>
+          <h1 className="text-6xl font-black tracking-tighter text-[#0A0A0A]">Editorial Stats</h1>
         </div>
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl text-emerald-600">
+        <div className="flex items-center gap-6 bg-white p-3 rounded-[32px] border editorial-border shadow-sm">
+            <div className="flex items-center gap-3 px-6 py-3 bg-emerald-50 rounded-2xl text-emerald-600">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Systems Active</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Neural Sync Active</span>
             </div>
-            <button className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Refresh Stream</button>
+            <button className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] text-black/20 hover:text-black transition-colors">Refresh Logic</button>
         </div>
       </div>
 
-      {/* Grid: Stats & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      {/* High-Contrast KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-          { label: 'Gross Sales', val: '$52,140', icon: TrendingUp, color: 'text-rose-500', bg: 'bg-rose-50' },
-          { label: 'Active Sessions', val: '1,284', icon: Activity, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-          { label: 'Conversion Rate', val: '3.4%', icon: Target, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Fulfillment', val: '98%', icon: Package, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Revenue', val: '$52,140', icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'Visits', val: '1,284', icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Velocity', val: '3.4%', icon: Target, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Units', val: '98%', icon: Layers, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         ].map((s, i) => (
-          <div key={i} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
-            <div className={`w-12 h-12 ${s.bg} ${s.color} rounded-2xl flex items-center justify-center mb-6`}>
-                <s.icon size={20} />
+          <div key={i} className="bg-white p-10 rounded-[50px] border editorial-border shadow-sm hover:shadow-2xl transition-all group">
+            <div className={`w-14 h-14 ${s.bg} ${s.color} rounded-[24px] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
+                <s.icon size={24} strokeWidth={1.5} />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{s.label}</p>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{s.val}</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-black/30 mb-2">{s.label}</p>
+            <h3 className="text-4xl font-black text-[#0A0A0A] tracking-tighter">{s.val}</h3>
           </div>
         ))}
       </div>
 
-      {/* AI Intelligence Block */}
-      <div className="relative rounded-[60px] bg-slate-900 p-16 overflow-hidden group">
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-rose-500/10 to-transparent pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row gap-16 items-start">
+      {/* Designer AI Intelligence Block */}
+      <div className="relative rounded-[80px] bg-[#0A0A0A] p-20 overflow-hidden group">
+          <div className="absolute top-0 right-0 w-[60%] h-full bg-gradient-to-l from-rose-600/10 to-transparent pointer-events-none transition-opacity group-hover:opacity-40" />
+          <div className="relative z-10 flex flex-col md:flex-row gap-20 items-start">
               <div className="shrink-0">
-                  <div className="w-24 h-24 rounded-[30px] bg-rose-500 flex items-center justify-center text-white shadow-2xl shadow-rose-500/20 group-hover:rotate-12 transition-transform duration-500">
-                      <Sparkles size={40} />
+                  <div className="w-28 h-28 rounded-[40px] bg-rose-600 flex items-center justify-center text-white shadow-[0_30px_60px_-12px_rgba(225,29,72,0.4)] group-hover:rotate-12 transition-transform duration-700">
+                      <Sparkles size={44} strokeWidth={1} />
                   </div>
               </div>
               <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-8">
-                      <div className="h-px w-8 bg-rose-500" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">Gemini Trend Oracle</span>
+                  <div className="flex items-center gap-6 mb-10">
+                      <div className="h-[1px] w-12 bg-rose-600" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-600">Gemini Trend Protocol</span>
                   </div>
-                  <div className="prose prose-invert max-w-none">
+                  <div className="max-w-3xl">
                       {loadingInsight ? (
-                          <div className="flex items-center gap-4 text-white/40 italic font-medium">
-                              <Loader2 size={20} className="animate-spin" />
-                              Synchronizing with Seoul fashion feeds...
+                          <div className="flex items-center gap-6 text-white/30 italic text-xl font-light serif">
+                              <Loader2 size={24} className="animate-spin" />
+                              Synchronizing architectural trends from Seoul...
                           </div>
                       ) : (
-                          <div className="text-white text-xl md:text-2xl font-bold leading-relaxed tracking-tight whitespace-pre-line">
+                          <div className="text-white text-2xl md:text-3xl font-light serif italic leading-relaxed tracking-tight whitespace-pre-line">
                               {insight}
                           </div>
                       )}
@@ -101,59 +96,59 @@ const Dashboard: React.FC = () => {
           </div>
       </div>
 
-      {/* Main Analytics Graph */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 bg-white p-12 rounded-[60px] border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-12">
-                  <h3 className="text-xl font-black tracking-tighter">Market Velocity</h3>
-                  <div className="flex gap-4">
-                      <button className="text-[9px] font-black uppercase tracking-widest text-rose-500 underline">24 Hours</button>
-                      <button className="text-[9px] font-black uppercase tracking-widest text-slate-300">7 Days</button>
+      {/* Data Visualization */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2 bg-white p-14 rounded-[80px] border editorial-border shadow-sm">
+              <div className="flex items-center justify-between mb-16">
+                  <h3 className="text-2xl font-black tracking-tighter italic serif">Revenue Architecture</h3>
+                  <div className="flex gap-6">
+                      <button className="text-[9px] font-black uppercase tracking-[0.3em] text-rose-600 border-b border-rose-600 pb-1">Period: Seasonal</button>
+                      <button className="text-[9px] font-black uppercase tracking-[0.3em] text-black/20">Archive</button>
                   </div>
               </div>
-              <div className="h-80 w-full">
+              <div className="h-96 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={MOCK_STATS.revenueChart}>
                         <defs>
                         <linearGradient id="velocity" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#e11d48" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
                         </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="month" hide />
                         <YAxis hide />
-                        <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="amount" stroke="#f43f5e" strokeWidth={4} fill="url(#velocity)" />
+                        <Tooltip contentStyle={{ borderRadius: '32px', border: 'none', boxShadow: '0 40px 80px rgba(0,0,0,0.1)', fontFamily: 'serif' }} />
+                        <Area type="monotone" dataKey="amount" stroke="#e11d48" strokeWidth={3} fill="url(#velocity)" animationDuration={2000} />
                     </AreaChart>
                   </ResponsiveContainer>
               </div>
           </div>
-          <div className="bg-white p-12 rounded-[60px] border border-slate-100 shadow-sm flex flex-col">
-              <h3 className="text-xl font-black tracking-tighter mb-10">Global Heat</h3>
-              <div className="space-y-8 flex-1">
+          <div className="bg-white p-14 rounded-[80px] border editorial-border shadow-sm flex flex-col">
+              <h3 className="text-2xl font-black tracking-tighter mb-12 serif italic text-rose-600">Global Signal</h3>
+              <div className="space-y-10 flex-1">
                   {[
-                      { city: 'Seoul', score: 98, trend: '+4%' },
-                      { city: 'Tokyo', score: 84, trend: '+12%' },
-                      { city: 'Paris', score: 72, trend: '-2%' },
-                      { city: 'LA', score: 65, trend: '+22%' },
+                      { city: 'Seoul', score: 98, trend: '+4.2%' },
+                      { city: 'Tokyo', score: 84, trend: '+12.5%' },
+                      { city: 'Paris', score: 72, trend: '-2.1%' },
+                      { city: 'London', score: 65, trend: '+18.0%' },
                   ].map((city, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                              <Globe size={16} className="text-slate-200" />
-                              <span className="text-xs font-black uppercase tracking-widest text-slate-600">{city.city}</span>
+                      <div key={idx} className="flex items-center justify-between group cursor-default">
+                          <div className="flex items-center gap-5">
+                              <Globe size={18} strokeWidth={1} className="text-black/10 group-hover:text-rose-600 transition-colors" />
+                              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black/40 group-hover:text-black transition-colors">{city.city}</span>
                           </div>
-                          <div className="flex items-center gap-4">
-                              <span className="text-xs font-bold text-slate-900">{city.score}%</span>
-                              <span className={`text-[10px] font-black ${city.trend.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <div className="flex items-center gap-6">
+                              <span className="text-sm font-bold tracking-tighter text-[#0A0A0A]">{city.score}%</span>
+                              <span className={`text-[10px] font-black ${city.trend.startsWith('+') ? 'text-emerald-500' : 'text-rose-600'}`}>
                                   {city.trend}
                               </span>
                           </div>
                       </div>
                   ))}
               </div>
-              <button className="w-full py-5 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] mt-12 hover:bg-rose-500 transition-all">
-                  Expansion Strategy
+              <button className="w-full py-6 bg-[#0A0A0A] text-white rounded-[32px] text-[10px] font-black uppercase tracking-[0.4em] mt-16 hover:bg-rose-600 transition-all shadow-xl active:scale-95">
+                  Expansion Directive
               </button>
           </div>
       </div>

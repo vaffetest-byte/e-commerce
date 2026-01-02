@@ -1,73 +1,71 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-// Utility to get a fresh AI instance with current environment variables
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 export const getDashboardInsight = async (stats: any) => {
   try {
     const ai = getAI();
-    const prompt = `Act as a senior trend forecaster for "Seoul Muse". 
+    const prompt = `Act as a senior high-fashion trend forecaster for a luxury boutique in Seoul. 
     Sales: $${stats.totalRevenue}, Orders: ${stats.totalOrders}.
-    Analyze performance and predict the next "viral" K-fashion trend.
-    Provide 3 punchy, data-driven bullet points for the business owner.`;
+    Analyze performance and predict the next "premium" K-fashion trend.
+    Provide 3 sophisticated, data-driven bullet points. Keep it professional and luxury-toned.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
-    return response.text;
+    return String(response.text || "Optimizing Seoul's market velocity...");
   } catch (error) {
     console.error("AI Insight Error:", error);
-    return "Optimizing market strategy based on current demand...";
+    return "Analyzing market shift in the Seongsu-dong district...";
   }
 };
 
 export const getTrendRadar = async () => {
   try {
     const ai = getAI();
-    const prompt = `Provide a 1-sentence "Hot Trend Alert" from the Seoul fashion scene today. Keep it under 20 words and high-energy.`;
+    const prompt = `Provide a 1-sentence "Haute Couture Alert" from the Seoul fashion scene today. Use sophisticated vocabulary. Under 15 words. Mention a specific district like Seongsu, Hannam, or Cheongdam.`;
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
-    return response.text;
+    return String(response.text || "The Hannam-dong silhouette is gravitating toward architectural draping.");
   } catch {
-    return "Ribbon-core is taking over the streets of Hongdae!";
+    return "The architectural minimalism of Hannam-dong defines the current season.";
   }
 };
 
 export const getFashionAdvice = async (productName: string) => {
   try {
     const ai = getAI();
-    const prompt = `You are a celebrity stylist in Seoul. Create a "Lookbook Entry" for: "${productName}". 
-    Include:
-    1. The "Vibe" (1 word)
-    2. "Pair with" (1 item)
-    3. "Occasion" (e.g. Cafe hopping in Seongsu).
-    Keep it extremely brief and aesthetic.`;
+    const prompt = `You are a celebrity head-stylist in Cheongdam-dong, Seoul. Create a "Curated Styling Protocol" for: "${productName}". 
+    Format:
+    CONCEPT: [1 word]
+    EQUIPMENT: [1 accessory]
+    DESTINATION: [1 specific Seoul location/activity]
+    Keep it elegant and brief.`;
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
-    return response.text;
+    return String(response.text || "CONCEPT: Avant-Garde | EQUIPMENT: Silver Choker | DESTINATION: Gallery opening in Samcheong-dong");
   } catch (error) {
-    return "Vibe: Romantic | Pair with: Pearl Earrings | Occasion: Seoul Cafe Hopping";
+    return "CONCEPT: Romantic | EQUIPMENT: Silk Scarf | DESTINATION: Afternoon tea in Seongsu";
   }
 };
 
 export const generateProductDescription = async (productName: string, category: string) => {
   try {
     const ai = getAI();
-    const prompt = `Write a premium, aesthetic product description for a fashion item named "${productName}" in the category "${category}". 
-    Focus on K-fashion aesthetics. Include 3 bullet points about quality and style. Keep it under 60 words.`;
+    const prompt = `Write a premium, editorial-style product description for a designer fashion item: "${productName}" (${category}). 
+    Tone: Sophisticated, Minimalist, Seoul-Aesthetic. Include 2-3 brief quality highlights. Under 50 words.`;
     
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
-    return response.text;
+    return String(response.text || "A masterclass in structural elegance. Crafted with precision for the modern Muse.");
   } catch (error) {
-    return "This limited-edition piece captures the essence of Seoul's modern street-style. Crafted for those who lead the trend.";
+    return "Refined silhouettes meet artisanal craftsmanship. A cornerstone for the contemporary Seoul wardrobe.";
   }
 };
