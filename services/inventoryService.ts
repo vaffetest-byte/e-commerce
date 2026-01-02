@@ -1,118 +1,109 @@
 import { Product, InventoryFilters, ProductStatus } from '../types';
+import { MOCK_PRODUCTS } from '../constants';
 
-const API_URL = 'http://localhost:3001/api/products';
-
-const getHeaders = () => {
-  const session = localStorage.getItem('muse_admin_session');
-  const token = session ? JSON.parse(session).token : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-  };
-};
+const STORAGE_KEY = 'seoul_muse_inventory_v2';
+const LOG_KEY = 'seoul_muse_audit_logs';
 
 export const inventoryService = {
-  // GET with full server-side filtering
+  // GET with full server-side simulation (Filter/Sort/Search)
   async getProducts(filters: InventoryFilters): Promise<Product[]> {
-    const params = new URLSearchParams();
+    let products = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify(MOCK_PRODUCTS));
+    
+    // Filter out Archived (Soft Delete)
+    products = products.filter((p: Product) => p.status !== ProductStatus.ARCHIVED);
 
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category && filters.category !== 'All') params.append('category', filters.category);
-    if (filters.status && filters.status !== 'All') params.append('status', filters.status);
-    if (filters.stockLevel && filters.stockLevel !== 'All') params.append('stockLevel', filters.stockLevel);
-    if (filters.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+    // Search Logic
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      products = products.filter((p: Product) => 
+        p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s)
+      );
+    }
+    
+    if (filters.status !== 'All') {
+      products = products.filter((p: Product) => p.status === filters.status);
+    }
+    
+    if (filters.category !== 'All') {
+      products = products.filter((p: Product) => p.category === filters.category);
+    }
+    
+    if (filters.stockLevel === 'Low') {
+      products = products.filter((p: Product) => p.stock > 0 && p.stock < 10);
+    } else if (filters.stockLevel === 'Out') {
+      products = products.filter((p: Product) => p.stock === 0);
+    }
+    
+    products.sort((a: any, b: any) => {
+      const factor = filters.sortOrder === 'asc' ? 1 : -1;
+      return a[filters.sortBy] < b[filters.sortBy] ? -1 * factor : 1 * factor;
+    });
 
-    const response = await fetch(`${API_URL}?${params.toString()}`);
-    if (!response.ok) throw new Error('Failed to fetch inventory');
-
-    const products = await response.json();
-
-    // Map DB fields to Frontend types if needed (e.g. image_url -> image)
-    return products.map((p: any) => ({
-      ...p,
-      image: p.image_url || p.image, // Handle mapping
-      createdAt: p.created_at
-    }));
+    return products;
   },
 
   async saveProduct(product: Product): Promise<Product> {
-    const isNew = !product.id || product.id.startsWith('new-'); // Simple check if it's new
-    // Actually, in our UI 'new' products usually lack an ID or have a logical flag.
-    // The previous service generated random IDs. Here we let the DB do it if it's a create.
-    // We'll assume if there's no ID or if we are in "creation mode", we call POST.
-    // However, the `saveProduct` interface takes a `Product` which has `id`.
-    // Let's rely on whether the ID exists in the DB or if the UI sends a specific signal.
-    // For now: assume POST if we are creating, PUT if updating. 
-    // Best practice: split create/update or check ID. 
-    // The UI calls `handleSave` -> `inventoryService.saveProduct`.
-    // The UI passes `editingProduct` which might have an ID if editing, or not (or partial) if new.
+    const products = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify(MOCK_PRODUCTS));
+    
+    // SKU Uniqueness Check
+    const existingSku = products.find((p: Product) => p.sku === product.sku && p.id !== product.id);
+    if (existingSku) throw new Error("SKU already exists in registry.");
 
-    const method = product.id && !product.id.includes('p-') ? 'PUT' : 'POST';
-    // Wait, the previous mock generated IDs like `p-...`. 
-    // Any existing real ID is likely a UUID.
-
-    // Simplified logic: If the ID looks like a UUID, it's an update. If it's missing or from the mock "new" logic, create.
-    const isUpdate = product.id && product.id.length > 10 && !product.id.startsWith('p-');
-
-    const url = isUpdate ? `${API_URL}/${product.id}` : API_URL;
-    const fetchMethod = isUpdate ? 'PUT' : 'POST';
-
-    const response = await fetch(url, {
-      method: fetchMethod,
-      headers: getHeaders(),
-      body: JSON.stringify(product)
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to save product');
+    const index = products.findIndex((p: Product) => p.id === product.id);
+    const updatedProduct = { ...product, updatedAt: new Date().toISOString() };
+    
+    if (index > -1) {
+      products[index] = updatedProduct;
+      this.logAction(product.id, 'UPDATE', `Product details modified.`);
+    } else {
+      updatedProduct.id = `p-${Math.random().toString(36).substr(2, 9)}`;
+      updatedProduct.createdAt = new Date().toISOString();
+      products.push(updatedProduct);
+      this.logAction(updatedProduct.id, 'CREATE', `Product registered in system.`);
     }
-
-    const saved = await response.json();
-    return {
-      ...saved,
-      image: saved.image_url || saved.image
-    };
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    return updatedProduct;
   },
 
   async adjustStock(id: string, delta: number): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}/stock`, {
-      method: 'PATCH',
-      headers: getHeaders(),
-      body: JSON.stringify({ delta })
-    });
+    const products = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify(MOCK_PRODUCTS));
+    const index = products.findIndex((p: Product) => p.id === id);
+    if (index === -1) return;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to adjust stock');
-    }
+    const newStock = Math.max(0, products[index].stock + delta);
+    products[index].stock = newStock;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    
+    this.logAction(id, 'STOCK_ADJUST', `Stock changed by ${delta}. New total: ${newStock}`);
   },
 
   async deleteProduct(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
+    const products = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify(MOCK_PRODUCTS));
+    const index = products.findIndex((p: Product) => p.id === id);
+    if (index > -1) {
+      products[index].status = ProductStatus.ARCHIVED; // Soft Delete
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+      this.logAction(id, 'ARCHIVE', `Product moved to archive.`);
+    }
+  },
 
-    if (!response.ok) throw new Error('Failed to archive product');
+  logAction(productId: string, action: string, message: string) {
+    const logs = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+    logs.push({
+      timestamp: new Date().toISOString(),
+      productId,
+      action,
+      message,
+      user: 'admin@seoulmuse.com'
+    });
+    localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(-100))); // Keep last 100
   },
 
   async exportCSV(filters: InventoryFilters): Promise<string> {
-    const params = new URLSearchParams();
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category && filters.category !== 'All') params.append('category', filters.category);
-    if (filters.status && filters.status !== 'All') params.append('status', filters.status);
-    if (filters.stockLevel && filters.stockLevel !== 'All') params.append('stockLevel', filters.stockLevel);
-    if (filters.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-
-    const response = await fetch(`${API_URL}/export/csv?${params.toString()}`, {
-      headers: getHeaders()
-    });
-
-    if (!response.ok) throw new Error('Failed to export CSV');
-
-    return await response.text();
+    const products = await this.getProducts(filters);
+    const headers = ['SKU', 'Name', 'Category', 'Stock', 'Price', 'Status'];
+    const rows = products.map(p => [p.sku, p.name, p.category, p.stock, p.price, p.status].join(','));
+    return [headers.join(','), ...rows].join('\n');
   }
 };
