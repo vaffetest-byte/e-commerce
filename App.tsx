@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Role, User, Product, Order, Customer, Coupon } from './types';
 import Layout from './components/Layout';
@@ -55,8 +56,18 @@ const App: React.FC = () => {
   useEffect(() => {
     const session = localStorage.getItem('muse_admin_session');
     if (session) {
-      setCurrentUser(JSON.parse(session));
-      setIsAuthenticated(true);
+      try {
+        const userData = JSON.parse(session);
+        if (userData && userData.id && userData.role) {
+          setCurrentUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('muse_admin_session');
+        }
+      } catch (e) {
+        console.error("Session restoration error:", e);
+        localStorage.removeItem('muse_admin_session');
+      }
     }
   }, []);
 
@@ -151,7 +162,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !currentUser) {
     return (
       <div className="min-h-screen bg-[#fdfcfb] flex flex-col items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-rose-500/5 blur-[150px] -translate-y-1/2 translate-x-1/2 rounded-full" />
@@ -242,8 +253,13 @@ const App: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-1000">
       <Layout 
-        user={currentUser!} 
-        onLogout={() => { setIsAuthenticated(false); localStorage.removeItem('muse_admin_session'); setView('store'); }} 
+        user={currentUser} 
+        onLogout={() => { 
+          setIsAuthenticated(false); 
+          setCurrentUser(null);
+          localStorage.removeItem('muse_admin_session'); 
+          setView('store'); 
+        }} 
         activePath={activePath} 
         onNavigate={setActivePath}
       >
