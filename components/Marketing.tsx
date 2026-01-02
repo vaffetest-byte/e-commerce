@@ -1,26 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Ticket, Plus, Tag, Calendar, BarChart3, Trash2, Loader2 } from 'lucide-react';
 import { Coupon } from '../types';
 import { inventoryService } from '../services/inventoryService';
 
 interface MarketingProps {
-  coupons: Coupon[];
-  onUpdateCoupon: (coupon: Coupon) => void;
+  onUpdateCoupon: () => void;
 }
 
-const Marketing: React.FC<MarketingProps> = ({ coupons: initialCoupons, onUpdateCoupon }) => {
-  const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
+const Marketing: React.FC<MarketingProps> = ({ onUpdateCoupon }) => {
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchCoupons = async () => {
-      setLoading(true);
+  const fetchCoupons = useCallback(async () => {
+    setLoading(true);
+    try {
       const data = await inventoryService.getCoupons();
       setCoupons(data);
+    } finally {
       setLoading(false);
-    };
-    fetchCoupons();
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [fetchCoupons]);
 
   const generateCoupon = async () => {
     const codes = ['MUSE2024', 'SEOULSTYLE', 'ATELIER15', 'ARCHIVE10', 'SILKROAD'];
@@ -37,15 +40,15 @@ const Marketing: React.FC<MarketingProps> = ({ coupons: initialCoupons, onUpdate
     };
 
     await inventoryService.saveCoupon(newCoupon);
-    const updated = await inventoryService.getCoupons();
-    setCoupons(updated);
+    await fetchCoupons();
+    onUpdateCoupon();
   };
 
   const deleteCoupon = async (id: string) => {
-    if (!window.confirm("Terminate this growth campaign?")) return;
+    if (!window.confirm("Terminate this growth campaign permanently? This coupon code will no longer function.")) return;
     await inventoryService.deleteCoupon(id);
-    const updated = await inventoryService.getCoupons();
-    setCoupons(updated);
+    await fetchCoupons();
+    onUpdateCoupon();
   };
 
   return (
@@ -66,7 +69,12 @@ const Marketing: React.FC<MarketingProps> = ({ coupons: initialCoupons, onUpdate
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {loading ? (
-          <div className="col-span-full py-20 flex justify-center"><Loader2 className="animate-spin text-rose-500" /></div>
+          <div className="col-span-full py-20 flex justify-center"><Loader2 className="animate-spin text-rose-500" size={32} /></div>
+        ) : coupons.length === 0 ? (
+          <div className="col-span-full py-20 text-center bg-white rounded-[50px] border border-dashed border-slate-200">
+              <Ticket size={48} className="mx-auto text-slate-100 mb-6" />
+              <p className="text-sm font-bold text-slate-300 uppercase tracking-widest">No active campaigns detected.</p>
+          </div>
         ) : coupons.map(coupon => (
             <div key={coupon.id} className="relative bg-white rounded-[50px] border border-slate-100 overflow-hidden group hover:shadow-2xl transition-all">
                 <div className="absolute top-1/2 -left-4 w-8 h-8 bg-slate-50 border-r border-slate-100 rounded-full -translate-y-1/2" />
@@ -86,7 +94,11 @@ const Marketing: React.FC<MarketingProps> = ({ coupons: initialCoupons, onUpdate
                                     {coupon.status}
                                 </span>
                             </div>
-                            <button onClick={() => deleteCoupon(coupon.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-colors">
+                            <button 
+                                onClick={() => deleteCoupon(coupon.id)} 
+                                className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                title="Terminate Campaign"
+                            >
                                 <Trash2 size={18} />
                             </button>
                         </div>

@@ -23,21 +23,23 @@ initStore();
 
 export const inventoryService = {
   // --- PRODUCT ENGINE ---
-  async getProducts(filters: InventoryFilters): Promise<Product[]> {
+  async getProducts(filters?: InventoryFilters): Promise<Product[]> {
     let products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
     products = products.filter((p: Product) => p.status !== ProductStatus.ARCHIVED);
 
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      products = products.filter((p: Product) => p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s));
+    if (filters) {
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        products = products.filter((p: Product) => p.name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s));
+      }
+      if (filters.status !== 'All') products = products.filter((p: Product) => p.status === filters.status);
+      if (filters.category !== 'All') products = products.filter((p: Product) => p.category === filters.category);
+      
+      products.sort((a: any, b: any) => {
+        const factor = filters.sortOrder === 'asc' ? 1 : -1;
+        return a[filters.sortBy] < b[filters.sortBy] ? -1 * factor : 1 * factor;
+      });
     }
-    if (filters.status !== 'All') products = products.filter((p: Product) => p.status === filters.status);
-    if (filters.category !== 'All') products = products.filter((p: Product) => p.category === filters.category);
-    
-    products.sort((a: any, b: any) => {
-      const factor = filters.sortOrder === 'asc' ? 1 : -1;
-      return a[filters.sortBy] < b[filters.sortBy] ? -1 * factor : 1 * factor;
-    });
 
     return products;
   },
@@ -74,11 +76,8 @@ export const inventoryService = {
 
   async deleteProduct(id: string): Promise<void> {
     const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
-    const index = products.findIndex((p: Product) => p.id === id);
-    if (index > -1) {
-      products[index].status = ProductStatus.ARCHIVED;
-      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products));
-    }
+    const updatedProducts = products.filter((p: Product) => p.id !== id);
+    localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(updatedProducts));
   },
 
   // --- ORDER FULFILLMENT ---
@@ -90,13 +89,11 @@ export const inventoryService = {
     const orders = await this.getOrders();
     const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || '[]');
     
-    // Verify stock availability for all items before committing
     for (const item of orderData.items || []) {
       const p = products.find((prod: Product) => prod.id === item.productId);
       if (!p || p.stock < item.quantity) throw new Error(`Insufficient stock for artifact: ${item.name}`);
     }
 
-    // Deduct stock
     for (const item of orderData.items || []) {
       const idx = products.findIndex((prod: Product) => prod.id === item.productId);
       products[idx].stock -= item.quantity;
@@ -146,6 +143,11 @@ export const inventoryService = {
     const coupons = await this.getCoupons();
     const filtered = coupons.filter(c => c.id !== id);
     localStorage.setItem(KEYS.COUPONS, JSON.stringify(filtered));
+  },
+
+  // --- CUSTOMERS ---
+  async getCustomers(): Promise<Customer[]> {
+    return JSON.parse(localStorage.getItem(KEYS.CUSTOMERS) || '[]');
   },
 
   // --- DATA EXPORT ---

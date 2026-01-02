@@ -3,10 +3,9 @@ import {
   Plus, Search, Edit2, Trash2, Sparkles, 
   Loader2, ChevronUp, ChevronDown, Download, 
   X, Image as ImageIcon, Check, AlertCircle,
-  ArrowUpDown, Wand2, Upload
+  ArrowUpDown, Wand2, Upload, Link as LinkIcon
 } from 'lucide-react';
 import { ProductStatus, Product, InventoryFilters } from '../types';
-import { generateProductDescription } from '../geminiService';
 import { inventoryService } from '../services/inventoryService';
 
 const CATEGORIES = ['All', 'Tops', 'Skirts', 'Co-ords', 'Dresses', 'Accessories'];
@@ -54,7 +53,7 @@ const Products: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Archive this product? It will be hidden from the storefront.")) {
+    if (window.confirm("Permanently remove this artifact from the registry? This action cannot be undone.")) {
       await inventoryService.deleteProduct(id);
       loadInventory();
     }
@@ -126,7 +125,6 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table Container */}
       <div className="bg-white rounded-[60px] border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.02)] p-12 overflow-hidden">
         <div className="flex flex-col lg:flex-row gap-8 items-center mb-12">
           <div className="relative flex-1 group">
@@ -142,11 +140,6 @@ const Products: React.FC = () => {
           <div className="flex gap-4">
             <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="px-8 py-6 bg-slate-50 border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors">
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value as any })} className="px-8 py-6 bg-slate-50 border border-slate-100 rounded-[28px] text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors">
-              <option value="All">All Visibility</option>
-              <option value={ProductStatus.ACTIVE}>Live Store</option>
-              <option value={ProductStatus.DRAFT}>Hidden Draft</option>
             </select>
           </div>
         </div>
@@ -166,6 +159,8 @@ const Products: React.FC = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr><td colSpan={6} className="py-32 text-center"><Loader2 className="animate-spin mx-auto text-rose-500" size={32} /></td></tr>
+              ) : products.length === 0 ? (
+                <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic text-sm">No artifacts matching current criteria.</td></tr>
               ) : products.map((product) => (
                 <tr key={product.id} className="group hover:bg-[#fdfcfb] transition-all">
                   <td className="px-16 py-10">
@@ -210,152 +205,146 @@ const Products: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {!loading && products.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-40 text-center text-slate-300 italic serif text-2xl">
-                    No artifacts found in this category.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Designer Register Modal */}
+      {/* Register Object Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/10">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-slate-900/10 backdrop-blur-md">
           <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
           <form 
             onSubmit={handleSave} 
-            className="relative w-full max-w-3xl bg-white rounded-[70px] p-16 space-y-12 animate-in zoom-in-95 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-slate-50"
+            className="relative w-full max-w-[1000px] bg-white rounded-[70px] p-24 shadow-[0_60px_100px_-20px_rgba(0,0,0,0.1)] border border-white animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start mb-16">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-500 block mb-4 italic">Entry Form // Atelier</span>
-                <h2 className="text-5xl font-black tracking-tighter text-[#0f172a] serif italic leading-none">Register <span className="not-italic font-extrabold text-[#0f172a]">Object</span></h2>
+                <span className="text-[12px] font-black uppercase tracking-[0.5em] text-rose-500 block mb-6 italic">Entry Form // Atelier</span>
+                <h2 className="serif text-[72px] font-bold text-[#0f172a] leading-none">Register Object</h2>
               </div>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="p-4 rounded-full bg-slate-50 hover:bg-rose-50 transition-colors group">
-                <X size={24} className="text-slate-300 group-hover:text-rose-500" />
+              <button type="button" onClick={() => setIsModalOpen(false)} className="p-6 rounded-full bg-slate-50 hover:bg-rose-50 transition-colors">
+                <X size={32} className="text-slate-300" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
-              {/* Image Selection Area */}
-              <div className="md:col-span-4 flex flex-col gap-4">
-                <div className="aspect-[3/4] rounded-[50px] overflow-hidden bg-[#f8fafc] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center group relative cursor-pointer hover:border-rose-200 transition-all">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-20 items-start">
+              {/* Image Preview Pillar */}
+              <div className="md:col-span-4 flex flex-col gap-10">
+                <div className="aspect-[4/5] rounded-[100px] overflow-hidden bg-[#f8fafc] border-2 border-slate-50 shadow-inner flex flex-col items-center justify-center relative group">
                   {editingProduct?.image ? (
-                    <>
-                      <img src={editingProduct.image} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white border border-white/20 px-6 py-3 rounded-full backdrop-blur-md">Replace Vision</span>
-                      </div>
-                    </>
+                    <img src={editingProduct.image} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="flex flex-col items-center gap-4 text-slate-300 group-hover:text-rose-400">
-                      <div className="p-6 bg-white rounded-full shadow-sm">
-                        <Upload size={32} strokeWidth={1.5} />
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest">Asset Upload</span>
+                    <div className="flex flex-col items-center gap-6 opacity-20">
+                      <ImageIcon size={64} strokeWidth={1} />
                     </div>
                   )}
-                  <input 
-                    type="url" 
-                    name="image"
-                    value={editingProduct?.image || ''} 
-                    onChange={handleChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    placeholder="URL ONLY FOR DEMO"
-                  />
                 </div>
-                <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100/50">
-                   <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest text-center">Visual artifacts must be high-res 4:5 aspect ratio.</p>
+                <div className="bg-rose-50/50 p-8 rounded-[40px] border border-rose-100">
+                  <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] text-center leading-relaxed">
+                    Visual artifacts must <br/> be high-res 4:5 aspect <br/> ratio.
+                  </p>
                 </div>
               </div>
 
-              {/* Data Inputs Area */}
-              <div className="md:col-span-8 space-y-8">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Object Name</label>
+              {/* Input Grid */}
+              <div className="md:col-span-8 space-y-12">
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 ml-6 italic">Object Name</label>
                     <input 
                       name="name"
                       value={editingProduct?.name || ''} 
                       onChange={handleChange} 
-                      placeholder="HONGDAE TENNIS MINI SKIRT" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      placeholder="PETAL RIBBON SILK" 
+                      className="w-full p-8 bg-[#f8fafc] rounded-[40px] text-[13px] font-black uppercase tracking-widest text-[#0f172a] focus:ring-4 focus:ring-rose-500/5 transition-all outline-none" 
                       required 
                     />
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Identity SKU</label>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 ml-6 italic">Identity SKU</label>
                     <input 
                       name="sku"
                       value={editingProduct?.sku || ''} 
                       onChange={handleChange} 
-                      placeholder="SM-002" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      placeholder="SM-001" 
+                      className="w-full p-8 bg-[#f8fafc] rounded-[40px] text-[13px] font-black uppercase tracking-widest text-[#0f172a] focus:ring-4 focus:ring-rose-500/5 transition-all outline-none" 
                       required 
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Price Point ($)</label>
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 ml-6 italic">Price Point ($)</label>
                     <input 
                       name="price"
                       type="number" 
                       step="0.01"
                       value={editingProduct?.price || ''} 
                       onChange={handleChange} 
-                      placeholder="35.00" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      placeholder="42" 
+                      className="w-full p-8 bg-[#f8fafc] rounded-[40px] text-[13px] font-black tracking-widest text-[#0f172a] focus:ring-4 focus:ring-rose-500/5 transition-all outline-none" 
                       required 
                     />
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Initial Reserve</label>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 ml-6 italic">Initial Reserve</label>
                     <input 
                       name="stock"
                       type="number" 
                       value={editingProduct?.stock || ''} 
                       onChange={handleChange} 
-                      placeholder="120" 
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black tracking-widest text-[#0f172a] placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm" 
+                      placeholder="45" 
+                      className="w-full p-8 bg-[#f8fafc] rounded-[40px] text-[13px] font-black tracking-widest text-[#0f172a] focus:ring-4 focus:ring-rose-500/5 transition-all outline-none" 
                       required 
                     />
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Department</label>
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 ml-6 italic">Department</label>
                     <select 
                       name="category"
                       value={editingProduct?.category || 'Tops'} 
                       onChange={handleChange}
-                      className="w-full p-7 bg-[#f8fafc] rounded-[32px] text-[11px] font-black uppercase tracking-widest text-[#0f172a] outline-none focus:ring-4 focus:ring-slate-100 transition-all shadow-sm appearance-none cursor-pointer"
+                      className="w-full p-8 bg-[#f8fafc] rounded-[40px] text-[13px] font-black uppercase tracking-widest text-[#0f172a] outline-none appearance-none cursor-pointer"
                     >
                       {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
+
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500 ml-6 italic">Visual Asset URL</label>
+                    <div className="relative">
+                      <LinkIcon size={18} className="absolute left-8 top-1/2 -translate-y-1/2 text-rose-500/30" />
+                      <input 
+                        name="image"
+                        type="url"
+                        value={editingProduct?.image || ''} 
+                        onChange={handleChange} 
+                        placeholder="HTTPS://IMAGES.UNSPLASH.COM/..." 
+                        className="w-full pl-20 pr-8 py-8 bg-rose-50/30 rounded-[40px] text-[12px] font-bold text-[#0f172a] focus:ring-4 focus:ring-rose-500/10 transition-all outline-none border border-rose-100/50" 
+                      />
+                    </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-8 pt-8">
+            <div className="flex gap-10 mt-20">
               <button 
                 type="button" 
                 onClick={() => setIsModalOpen(false)} 
-                className="flex-1 py-7 bg-[#f1f5f9] text-[#0f172a] rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-slate-200 transition-all active:scale-95"
+                className="flex-1 py-10 bg-[#f1f5f9] text-[#0f172a] rounded-[50px] font-black uppercase tracking-[0.5em] text-[12px] hover:bg-slate-200 transition-all active:scale-95"
               >
                 Discard Draft
               </button>
               <button 
                 type="submit" 
                 disabled={saving} 
-                className="flex-1 py-7 bg-[#0f172a] text-white rounded-[32px] font-black uppercase tracking-[0.4em] text-[11px] hover:bg-[#1e293b] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-4"
+                className="flex-1 py-10 bg-[#0f172a] text-white rounded-[50px] font-black uppercase tracking-[0.5em] text-[12px] hover:bg-[#1e293b] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-6"
               >
-                {saving ? <Loader2 className="animate-spin" size={16} /> : <Check size={18} />}
+                {saving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
                 {saving ? 'Syncing...' : 'Confirm Entry'}
               </button>
             </div>

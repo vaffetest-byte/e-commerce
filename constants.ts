@@ -1,13 +1,12 @@
-
 import { ProductStatus, OrderStatus, Role, Product, Order, Customer, Coupon } from './types';
 
 export const MOCK_PRODUCTS: Product[] = [
-  { id: 'g1', name: 'Petal Ribbon Silk Blouse', sku: 'SM-001', price: 42.00, stock: 45, status: ProductStatus.ACTIVE, category: 'Tops', socialHeat: 98, image: 'https://images.unsplash.com/photo-1564252629749-fb2d4212ffec?auto=format&fit=crop&q=80&w=800' },
-  { id: 'g2', name: 'Hongdae Tennis Mini Skirt', sku: 'SM-002', price: 35.00, stock: 120, status: ProductStatus.ACTIVE, category: 'Skirts', socialHeat: 85, image: 'https://images.unsplash.com/photo-1582142839970-2b9e04b60f65?auto=format&fit=crop&q=80&w=800' },
-  { id: 'g3', name: 'Vintage Tweed Set - Ivory', sku: 'SM-003', price: 125.00, stock: 18, status: ProductStatus.ACTIVE, category: 'Co-ords', socialHeat: 92, image: 'https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?auto=format&fit=crop&q=80&w=800' },
-  { id: 'g4', name: 'Lace-Up Romantic Midi', sku: 'SM-004', price: 89.00, stock: 25, status: ProductStatus.ACTIVE, category: 'Dresses', socialHeat: 76, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&q=80&w=800' },
-  { id: 'g5', name: 'Seongsu Oversized Knit', sku: 'SM-005', price: 58.00, stock: 60, status: ProductStatus.ACTIVE, category: 'Tops', socialHeat: 89, image: 'https://images.unsplash.com/photo-1624206112918-f140f087f9b5?auto=format&fit=crop&q=80&w=800' },
-  { id: 'g6', name: 'Moonlight Satin Slip', sku: 'SM-006', price: 65.00, stock: 12, status: ProductStatus.ACTIVE, category: 'Dresses', socialHeat: 95, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800' },
+  { id: 'g1', name: 'Petal Ribbon Silk Blouse', sku: 'SM-001', price: 42.00, stock: 45, status: ProductStatus.ACTIVE, category: 'Tops', socialHeat: 98, image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200' },
+  { id: 'g2', name: 'Hongdae Tennis Mini Skirt', sku: 'SM-002', price: 35.00, stock: 120, status: ProductStatus.ACTIVE, category: 'Skirts', socialHeat: 85, image: 'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&q=80&w=1200' },
+  { id: 'g3', name: 'Vintage Tweed Set - Ivory', sku: 'SM-003', price: 125.00, stock: 18, status: ProductStatus.ACTIVE, category: 'Co-ords', socialHeat: 92, image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&q=80&w=1200' },
+  { id: 'g4', name: 'Lace-Up Romantic Midi', sku: 'SM-004', price: 89.00, stock: 25, status: ProductStatus.ACTIVE, category: 'Dresses', socialHeat: 76, image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=1200' },
+  { id: 'g5', name: 'Seongsu Oversized Knit', sku: 'SM-005', price: 58.00, stock: 60, status: ProductStatus.ACTIVE, category: 'Tops', socialHeat: 89, image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&q=80&w=1200' },
+  { id: 'g6', name: 'Moonlight Satin Slip', sku: 'SM-006', price: 65.00, stock: 12, status: ProductStatus.ACTIVE, category: 'Dresses', socialHeat: 95, image: 'https://images.unsplash.com/photo-1502716119720-b23a93e5fe1b?auto=format&fit=crop&q=80&w=1200' },
 ];
 
 export const MOCK_ORDERS: Order[] = [

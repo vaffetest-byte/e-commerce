@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Menu, X, Sparkles, Loader2, ArrowUpRight, Search, Instagram, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Menu, X, Sparkles, Loader2, ArrowUpRight, Search, Instagram, ChevronRight, ImageOff } from 'lucide-react';
 import { Product } from '../types';
 import { getFashionAdvice, getTrendRadar } from '../geminiService';
 import { inventoryService } from '../services/inventoryService';
@@ -96,6 +96,11 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
     }
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    target.src = 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop'; // Elegant abstract fallback
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-32">
       {/* Editorial Navigation */}
@@ -156,8 +161,9 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
             <div className="lg:col-span-7 relative flex items-center justify-center lg:justify-end">
                 <div className="relative aspect-[4/5] w-full max-w-[640px] rounded-[180px] overflow-hidden shadow-[0_80px_120px_-40px_rgba(0,0,0,0.18)] border-[6px] border-white group">
                     <img 
-                        src="https://images.unsplash.com/photo-1589156206699-bc21e38c8a7d?q=80&w=2000&auto=format&fit=crop" 
+                        src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=2000&auto=format&fit=crop" 
                         alt="Editorial Visual"
+                        onError={handleImageError}
                         className="w-full h-full object-cover transition-transform duration-[6s] group-hover:scale-110 ease-out"
                         loading="eager"
                     />
@@ -225,10 +231,11 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
 
                 return (
                     <div key={product.id} className={`${colSpan} group relative flex flex-col ${isLeft ? 'items-start' : 'items-end md:mt-32'}`}>
-                        <div className={`relative aspect-[3/4] w-full max-w-xl rounded-[120px] overflow-hidden shadow-[0_80px_100px_-30px_rgba(0,0,0,0.1)] bg-[#F9F8F6] border border-black/[0.03] product-card-reveal`}>
+                        <div className={`relative aspect-[3/4] w-full max-w-xl rounded-[120px] overflow-hidden shadow-[0_80px_100px_-30px_rgba(0,0,0,0.1)] bg-[#F9F8F6] border border-black/[0.03] product-card-reveal flex items-center justify-center`}>
                             <img 
                                 src={product.image} 
                                 alt={product.name} 
+                                onError={handleImageError}
                                 className={`w-full h-full object-cover transition-all duration-[3s] ${product.stock <= 0 ? 'grayscale opacity-50' : ''}`}
                             />
                             <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors duration-1000" />
@@ -297,7 +304,7 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                     {cart.map((item, idx) => (
                         <div key={`${item.id}-${item.cartId}`} className="flex gap-12 items-center group animate-in fade-in slide-in-from-bottom-6">
                             <div className="w-32 h-44 rounded-[50px] overflow-hidden shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-1000">
-                                <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                                <img src={item.image} className="w-full h-full object-cover" alt={item.name} onError={handleImageError} />
                             </div>
                             <div className="flex-1">
                                 <div className="flex justify-between items-start">

@@ -8,8 +8,7 @@ import Orders from './components/Orders';
 import Customers from './components/Customers';
 import Marketing from './components/Marketing';
 import Settings from './components/Settings';
-import { MOCK_PRODUCTS, MOCK_ORDERS, MOCK_CUSTOMERS, MOCK_COUPONS } from './constants';
-import { Lock, Mail, ChevronRight, Monitor, ShoppingBag, Loader2, AlertCircle, Fingerprint, Wand2, ShieldCheck, UserCircle, Briefcase } from 'lucide-react';
+import { Lock, Mail, ShoppingBag, Loader2, AlertCircle, Fingerprint, ShieldCheck, UserCircle, Briefcase, Monitor } from 'lucide-react';
 import { inventoryService } from './services/inventoryService';
 
 const App: React.FC = () => {
@@ -24,24 +23,29 @@ const App: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-  const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
-  const [coupons, setCoupons] = useState<Coupon[]>(MOCK_COUPONS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
 
-  const syncData = async () => {
+  const syncAllData = async () => {
     try {
-      const data = await inventoryService.getProducts({ 
-        search: '', category: 'All', status: 'All' as any, stockLevel: 'All', 
-        sortBy: 'name', sortOrder: 'asc' 
-      });
-      setProducts(data || []);
+      const [prodData, orderData, custData, coupData] = await Promise.all([
+        inventoryService.getProducts(),
+        inventoryService.getOrders(),
+        inventoryService.getCustomers(),
+        inventoryService.getCoupons()
+      ]);
+      setProducts(prodData);
+      setOrders(orderData);
+      setCustomers(custData);
+      setCoupons(coupData);
     } catch (err) {
-      setProducts(MOCK_PRODUCTS);
+      console.error("Critical Sync Error:", err);
     }
   };
 
   useEffect(() => {
-    syncData();
+    syncAllData();
   }, [view, activePath]);
 
   useEffect(() => {
@@ -57,42 +61,21 @@ const App: React.FC = () => {
     setIsAuthenticating(true);
     setAuthError(null);
     
-    // Simulate network delay for premium feel
     await new Promise(r => setTimeout(r, 1200));
 
     let user: User | null = null;
-
     if (loginEmail.toLowerCase() === 'admin@seoulmuse.com' && loginPassword === 'admin') {
-      user = {
-        id: 'usr-001',
-        name: 'Alexander Pierce',
-        email: 'admin@seoulmuse.com',
-        role: Role.SUPER_ADMIN,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-      };
+      user = { id: 'usr-001', name: 'Alexander Pierce', email: 'admin@seoulmuse.com', role: Role.SUPER_ADMIN, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' };
     } else if (loginEmail.toLowerCase() === 'manager@seoulmuse.com' && loginPassword === 'manager') {
-      user = {
-        id: 'usr-002',
-        name: 'Soyeon Kim',
-        email: 'manager@seoulmuse.com',
-        role: Role.MANAGER,
-        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-      };
+      user = { id: 'usr-002', name: 'Soyeon Kim', email: 'manager@seoulmuse.com', role: Role.MANAGER, avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' };
     } else if (loginEmail.toLowerCase() === 'support@seoulmuse.com' && loginPassword === 'support') {
-      user = {
-        id: 'usr-003',
-        name: 'David Chen',
-        email: 'support@seoulmuse.com',
-        role: Role.SUPPORT,
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-      };
+      user = { id: 'usr-003', name: 'David Chen', email: 'support@seoulmuse.com', role: Role.SUPPORT, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' };
     }
 
     if (user) {
       setCurrentUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('muse_admin_session', JSON.stringify(user));
-      // Reset path to dashboard if path is not accessible for new role
       setActivePath('/');
     } else {
       setAuthError('Identity validation failed. Access denied.');
@@ -136,7 +119,6 @@ const App: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#fdfcfb] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-        {/* Background Ambient Decor */}
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-rose-500/5 blur-[150px] -translate-y-1/2 translate-x-1/2 rounded-full" />
         <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] translate-y-1/2 -translate-x-1/2 rounded-full" />
 
@@ -193,32 +175,22 @@ const App: React.FC = () => {
             </button>
           </form>
 
-          {/* Role Emulation / Quick Access */}
           <div className="mt-20 pt-16 border-t border-black/[0.03]">
             <p className="text-center text-[9px] font-black uppercase tracking-[0.5em] text-black/20 mb-10">Simulation Protocol: Select Role</p>
             <div className="grid grid-cols-3 gap-6">
-                <button 
-                  onClick={() => quickLogin(Role.SUPER_ADMIN)}
-                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
-                >
+                <button onClick={() => quickLogin(Role.SUPER_ADMIN)} className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-sm">
                         <ShieldCheck size={24} strokeWidth={1.5} />
                     </div>
                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-[#0f172a]">Super</span>
                 </button>
-                <button 
-                  onClick={() => quickLogin(Role.MANAGER)}
-                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
-                >
+                <button onClick={() => quickLogin(Role.MANAGER)} className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-rose-500 group-hover:text-white transition-all shadow-sm">
                         <Briefcase size={24} strokeWidth={1.5} />
                     </div>
                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-rose-500">Manager</span>
                 </button>
-                <button 
-                  onClick={() => quickLogin(Role.SUPPORT)}
-                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
-                >
+                <button onClick={() => quickLogin(Role.SUPPORT)} className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
                         <UserCircle size={24} strokeWidth={1.5} />
                     </div>
@@ -242,9 +214,9 @@ const App: React.FC = () => {
       >
         {activePath === '/' && <Dashboard />}
         {activePath === '/products' && <Products />}
-        {activePath === '/orders' && <Orders orders={orders} onUpdateOrder={() => {}} />}
+        {activePath === '/orders' && <Orders orders={orders} onUpdateOrder={syncAllData} />}
         {activePath === '/customers' && <Customers customers={customers} />}
-        {activePath === '/marketing' && <Marketing coupons={coupons} onUpdateCoupon={() => {}} />}
+        {activePath === '/marketing' && <Marketing onUpdateCoupon={syncAllData} />}
         {activePath === '/settings' && <Settings />}
       </Layout>
       <ViewToggle />
