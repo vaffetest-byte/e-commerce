@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Zap, Cpu, Box, Sparkles, Loader2, ArrowRight, RefreshCw, Layers } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { Menu, X, Zap, Cpu, Box, Sparkles, Loader2, RefreshCw, Layers } from 'lucide-react';
+import { runLabExperiment } from '../geminiService';
 
 interface LabProps {
   onNavigateToHome: () => void;
@@ -8,173 +9,159 @@ interface LabProps {
   onNavigateToManifesto: () => void;
 }
 
+interface ExperimentLog {
+  id: string;
+  type: string;
+  prompt: string;
+  result: string;
+  timestamp: string;
+}
+
 const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavigateToManifesto }) => {
   const [labPrompt, setLabPrompt] = useState<string>("");
   const [labResult, setLabResult] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeExperiment, setActiveExperiment] = useState<'fabric' | 'form' | 'color'>('form');
+  const [logs, setLogs] = useState<ExperimentLog[]>([]);
+
+  useEffect(() => {
+    const savedLogs = localStorage.getItem('seoul_muse_lab_logs');
+    if (savedLogs) setLogs(JSON.parse(savedLogs));
+  }, []);
 
   const runExperiment = async () => {
     if (!labPrompt) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const promptText = `Act as an experimental K-fashion AI designer in Seoul. 
-      Input concept: "${labPrompt}"
-      Experiment Type: "${activeExperiment}"
-      Provide a highly technical, futuristic design insight for a new luxury garment. 
-      Format:
-      [EXPERIMENTAL ID]: SM-LAB-XXXX
-      [SYNTHETIC COMPONENT]: ...
-      [FORM FACTOR]: ...
-      [BEHAVIOR]: ...
-      Keep it brief, tech-heavy, and sophisticated. Under 60 words.`;
+      const result = await runLabExperiment(labPrompt, activeExperiment);
+      setLabResult(result);
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: promptText,
-      });
-      setLabResult(String(response.text || "Experiment timed out. Rebooting neural core."));
+      const newLog: ExperimentLog = {
+        id: `MUSE-LAB-${Date.now()}`,
+        type: activeExperiment,
+        prompt: labPrompt,
+        result: result,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      
+      const updatedLogs = [newLog, ...logs].slice(0, 5);
+      setLogs(updatedLogs);
+      localStorage.setItem('seoul_muse_lab_logs', JSON.stringify(updatedLogs));
     } catch (e) {
-      setLabResult("Critical failure in AI neural core. Access denied.");
+      setLabResult("FAILURE: Neural core unresponsive.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const experimentConfigs = {
-    fabric: { title: "Synthetic Texture Lab", icon: Box, desc: "Manipulating molecular draping and reactive fibers." },
-    form: { title: "Geometric Form Lab", icon: Layers, desc: "Architectural silhouettes via algorithmic stress-mapping." },
-    color: { title: "Chromatic Pulse Lab", icon: Zap, desc: "Dynamic light-reactive dyes and digital gradients." }
+    fabric: { title: "Fabric Materia", icon: Box, desc: "Synthetic polymers & biolace." },
+    form: { title: "Geometric Form", icon: Layers, desc: "Architectural stress mapping." },
+    color: { title: "Chromatic Pulse", icon: Zap, desc: "Light-reactive dyes." }
   };
 
   return (
-    <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-60 overflow-x-hidden font-mono">
-      {/* Lab Navigation */}
-      <nav className="fixed top-0 w-full z-[100] h-32 flex items-center px-8 md:px-20 justify-between bg-white/70 backdrop-blur-2xl border-b border-black/[0.05]">
-        <div className="flex items-center gap-24">
-            <div className="flex flex-col group cursor-pointer" onClick={onNavigateToHome}>
-                <span className="serif text-5xl font-bold tracking-tighter leading-none text-black">Seoul Muse</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.8em] text-rose-600 mt-1">LABORATORY / ALPHA</span>
-            </div>
-            <div className="hidden lg:flex items-center gap-16 uppercase text-[9px] font-black tracking-[0.5em] text-black/30">
-                <button onClick={onNavigateToCatalog} className="hover:text-rose-500 transition-colors uppercase">The Archives</button>
-                <button onClick={onNavigateToManifesto} className="hover:text-rose-500 transition-colors uppercase">Manifesto</button>
-                <button className="text-black uppercase underline decoration-rose-500 underline-offset-8">Lab</button>
-            </div>
+    <div className="min-h-screen bg-[#f8f9fa] text-[#0f172a] pb-60 font-mono">
+      {/* Lab Nav Responsive */}
+      <nav className="fixed top-0 w-full z-[100] h-20 md:h-32 flex items-center px-6 md:px-20 justify-between bg-white/80 backdrop-blur-2xl border-b border-black/[0.05]">
+        <div className="flex items-center gap-12 md:gap-24">
+          <div className="flex flex-col cursor-pointer" onClick={onNavigateToHome}>
+            <span className="serif text-2xl md:text-5xl font-bold tracking-tighter leading-none text-black">Seoul Muse</span>
+            <span className="hidden sm:block text-[8px] md:text-[10px] font-black uppercase tracking-[0.6em] text-rose-600">AESTHETIC LAB // ALPHA</span>
+          </div>
         </div>
-        <div className="flex items-center gap-12">
-            <button className="p-2" onClick={onNavigateToHome}>
-                <X size={32} strokeWidth={1} />
-            </button>
-        </div>
+        <button onClick={onNavigateToHome} className="p-3 md:p-4 hover:bg-black/5 rounded-full">
+          <X size={24} md:size={32} strokeWidth={1} />
+        </button>
       </nav>
 
-      {/* Lab Interface */}
-      <section className="pt-64 px-8 md:px-20 max-w-7xl mx-auto space-y-32">
-        <header className="stagger-in">
-          <h1 className="text-8xl md:text-[10rem] font-black tracking-tighter leading-[0.8] mb-12 uppercase italic">
-            Design <br/> <span className="text-rose-600">Sync</span>
-          </h1>
-          <p className="max-w-2xl text-black/40 text-lg md:text-xl font-medium tracking-tight">
-            The Lab is our experimental core. Here, human intuition meets algorithmic intent to prototype the silhouttes of 2026.
-          </p>
-        </header>
-
-        {/* Neural Controller */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          <div className="lg:col-span-4 space-y-12">
-             <div className="space-y-6">
-               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-rose-600">Selection Matrix</span>
-               <div className="flex flex-col gap-4">
-                  {(Object.keys(experimentConfigs) as Array<keyof typeof experimentConfigs>).map(key => (
-                    <button 
-                      key={key}
-                      onClick={() => setActiveExperiment(key)}
-                      className={`p-8 rounded-2xl border flex items-center gap-8 text-left transition-all ${activeExperiment === key ? 'bg-black text-white border-black shadow-2xl' : 'bg-white border-black/5 hover:border-rose-500 text-black/40'}`}
-                    >
-                      {React.createElement(experimentConfigs[key].icon, { size: 24, strokeWidth: activeExperiment === key ? 2 : 1 })}
-                      <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-widest">{experimentConfigs[key].title}</h4>
-                      </div>
-                    </button>
-                  ))}
-               </div>
-             </div>
-             
-             <div className="p-10 bg-slate-50 rounded-[40px] space-y-6">
-                <Cpu size={24} className="text-rose-500" />
-                <p className="text-[10px] text-black/40 leading-relaxed font-bold uppercase tracking-widest">
-                   {experimentConfigs[activeExperiment].desc}
-                </p>
-             </div>
+      {/* Lab Grid Stacking */}
+      <section className="pt-24 md:pt-48 px-6 md:px-20 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-16">
+        
+        {/* Left Sidebar Stacks on Mobile */}
+        <div className="lg:col-span-3 order-2 lg:order-1 space-y-8 md:space-y-12">
+          <div className="space-y-6">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-500">Control Matrix</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
+              {(Object.keys(experimentConfigs) as Array<keyof typeof experimentConfigs>).map(key => (
+                <button 
+                  key={key}
+                  onClick={() => setActiveExperiment(key)}
+                  className={`p-6 rounded-3xl border text-left transition-all ${activeExperiment === key ? 'bg-black text-white border-black shadow-xl' : 'bg-white border-black/[0.05] text-black/40'}`}
+                >
+                  <h4 className="text-[10px] font-black uppercase tracking-widest mb-1">{experimentConfigs[key].title}</h4>
+                  <p className="text-[8px] opacity-60 truncate">{experimentConfigs[key].desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="lg:col-span-8">
-            <div className="bg-white border border-black/[0.05] rounded-[60px] p-12 md:p-20 shadow-sm space-y-16 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 blur-[100px] pointer-events-none" />
-                
-                <div className="space-y-10">
-                  <label className="text-[11px] font-black uppercase tracking-[0.6em] text-black/20 block">Conceptual Input</label>
-                  <textarea 
-                    value={labPrompt}
-                    onChange={(e) => setLabPrompt(e.target.value)}
-                    placeholder="E.G. LIQUID SILK IN AN INDUSTRIAL SEOUL RAINSTORM..."
-                    className="w-full bg-slate-50/50 border border-black/5 p-12 rounded-3xl text-xl font-black uppercase tracking-widest min-h-[160px] focus:ring-4 focus:ring-rose-500/5 transition-all outline-none"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-10">
-                  <button 
-                    onClick={runExperiment}
-                    disabled={isGenerating || !labPrompt}
-                    className="w-full sm:w-auto px-16 py-10 rounded-full bg-black text-white text-[11px] font-black uppercase tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center justify-center gap-6 disabled:opacity-20 shadow-xl active:scale-95"
-                  >
-                    {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                    Initialize Experiment
-                  </button>
-                  <p className="text-[9px] font-black text-black/20 uppercase tracking-widest">Powered by Gemini Strategic Protocol</p>
-                </div>
-
-                {labResult && (
-                  <div className="mt-20 pt-20 border-t border-black/5 animate-in slide-in-from-bottom-8 duration-700">
-                    <div className="flex items-center gap-4 mb-10">
-                      <Sparkles size={18} className="text-rose-500" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.6em] text-black/20">Lab Insights</span>
-                    </div>
-                    <div className="p-12 bg-[#0f172a] text-white rounded-[40px] shadow-inner">
-                       <p className="text-lg md:text-xl font-bold leading-relaxed whitespace-pre-line tracking-tight italic opacity-90">
-                          {labResult}
-                       </p>
-                    </div>
-                  </div>
-                )}
+          <div className="hidden md:block bg-white border border-black/[0.03] p-8 rounded-3xl shadow-sm space-y-8">
+            <span className="text-[10px] font-black uppercase tracking-widest text-black/20">Registry Logs</span>
+            <div className="space-y-4">
+              {logs.map(log => (
+                <button key={log.id} onClick={() => setLabResult(log.result)} className="w-full text-left p-3 rounded-xl hover:bg-slate-50">
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[8px] font-black uppercase text-rose-500">{log.type}</span>
+                   </div>
+                   <p className="text-[9px] font-bold text-black/40 truncate uppercase">{log.prompt}</p>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Visual Lab Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-           {[
-             { label: "Neural Iterations", val: "482,901", trend: "+12%" },
-             { label: "Synthetic Models", val: "142 Active", trend: "Stable" },
-             { label: "Design Sync Rate", val: "99.4%", trend: "Optimal" }
-           ].map((stat, i) => (
-             <div key={i} className="bg-white p-12 rounded-[50px] border border-black/5 group hover:border-rose-500 transition-colors">
-                <span className="text-[10px] font-black uppercase tracking-[0.6em] text-black/20 block mb-6">{stat.label}</span>
-                <div className="flex items-baseline justify-between">
-                   <h3 className="text-4xl font-black tracking-tighter">{stat.val}</h3>
-                   <span className="text-[10px] font-black text-rose-500">{stat.trend}</span>
-                </div>
+        {/* Center Main Synthesis UI */}
+        <div className="lg:col-span-6 order-1 lg:order-2 space-y-12">
+          <div className="bg-white border border-black/[0.05] rounded-[40px] md:rounded-[60px] p-8 md:p-16 shadow-sm space-y-10 relative overflow-hidden">
+            <div className="flex justify-between items-center">
+               <h2 className="serif text-4xl md:text-8xl italic font-light tracking-tighter">Design <span className="not-italic font-black">Synthesis</span></h2>
+               <Cpu size={20} md:size={24} className="text-slate-200" />
+            </div>
+
+            <div className="space-y-6">
+               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-black/20 italic">Conceptual Nucleus</span>
+               <textarea 
+                 value={labPrompt}
+                 onChange={(e) => setLabPrompt(e.target.value)}
+                 placeholder="DESCRIBE THE VIBE..."
+                 className="w-full bg-[#f8f9fa] border-none p-8 md:p-12 rounded-[30px] md:rounded-[40px] text-lg md:text-2xl font-black uppercase tracking-widest min-h-[160px] md:min-h-[220px] outline-none"
+               />
+            </div>
+
+            <button 
+              onClick={runExperiment}
+              disabled={isGenerating || !labPrompt}
+              className="w-full py-6 md:py-8 rounded-full bg-[#0f172a] text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] hover:bg-rose-600 transition-all flex items-center justify-center gap-4 disabled:opacity-20"
+            >
+              {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+              Initialize Synthesis
+            </button>
+          </div>
+
+          {labResult && (
+            <div className="animate-in slide-in-from-bottom-8 duration-700">
+               <div className="p-8 md:p-16 bg-black text-white rounded-[40px] md:rounded-[60px] shadow-3xl">
+                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 block mb-8">Synthesis Output</span>
+                  <p className="text-lg md:text-2xl font-bold leading-relaxed italic serif opacity-95">
+                    {labResult}
+                  </p>
+               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar Telemetry */}
+        <div className="lg:col-span-3 order-3 hidden lg:block space-y-12">
+          <div className="bg-white border border-black/[0.03] p-10 rounded-[50px] space-y-12">
+             <div className="text-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-black/20 block mb-6">Performance</span>
+                <div className="text-3xl font-black tracking-tighter">99.4%</div>
+                <span className="text-[8px] font-black uppercase text-emerald-500">Optimal Sync</span>
              </div>
-           ))}
+          </div>
         </div>
       </section>
-
-      {/* Decorative Lab Elements */}
-      <div className="fixed bottom-0 right-0 p-20 opacity-5 pointer-events-none select-none overflow-hidden">
-        <Layers size={800} strokeWidth={0.5} />
-      </div>
     </div>
   );
 };
