@@ -9,7 +9,7 @@ import Customers from './components/Customers';
 import Marketing from './components/Marketing';
 import Settings from './components/Settings';
 import { MOCK_PRODUCTS, MOCK_ORDERS, MOCK_CUSTOMERS, MOCK_COUPONS } from './constants';
-import { Lock, Mail, ChevronRight, Monitor, ShoppingBag, Loader2, AlertCircle, Fingerprint, Wand2 } from 'lucide-react';
+import { Lock, Mail, ChevronRight, Monitor, ShoppingBag, Loader2, AlertCircle, Fingerprint, Wand2, ShieldCheck, UserCircle, Briefcase } from 'lucide-react';
 import { inventoryService } from './services/inventoryService';
 
 const App: React.FC = () => {
@@ -56,23 +56,55 @@ const App: React.FC = () => {
     e.preventDefault();
     setIsAuthenticating(true);
     setAuthError(null);
-    await new Promise(r => setTimeout(r, 800));
+    
+    // Simulate network delay for premium feel
+    await new Promise(r => setTimeout(r, 1200));
+
+    let user: User | null = null;
 
     if (loginEmail.toLowerCase() === 'admin@seoulmuse.com' && loginPassword === 'admin') {
-      const user: User = {
+      user = {
         id: 'usr-001',
         name: 'Alexander Pierce',
         email: 'admin@seoulmuse.com',
         role: Role.SUPER_ADMIN,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
       };
+    } else if (loginEmail.toLowerCase() === 'manager@seoulmuse.com' && loginPassword === 'manager') {
+      user = {
+        id: 'usr-002',
+        name: 'Soyeon Kim',
+        email: 'manager@seoulmuse.com',
+        role: Role.MANAGER,
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+      };
+    } else if (loginEmail.toLowerCase() === 'support@seoulmuse.com' && loginPassword === 'support') {
+      user = {
+        id: 'usr-003',
+        name: 'David Chen',
+        email: 'support@seoulmuse.com',
+        role: Role.SUPPORT,
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+      };
+    }
+
+    if (user) {
       setCurrentUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('muse_admin_session', JSON.stringify(user));
+      // Reset path to dashboard if path is not accessible for new role
+      setActivePath('/');
     } else {
-      setAuthError('Identity validation failed.');
+      setAuthError('Identity validation failed. Access denied.');
     }
     setIsAuthenticating(false);
+  };
+
+  const quickLogin = (role: Role) => {
+    const email = role.toLowerCase().replace('_', '') + '@seoulmuse.com';
+    const password = role.toLowerCase().replace('_', '');
+    setLoginEmail(email);
+    setLoginPassword(password);
   };
 
   const ViewToggle = () => (
@@ -103,31 +135,96 @@ const App: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#fdfcfb] flex flex-col items-center justify-center p-6 relative">
-        <div className="w-full max-w-md bg-white rounded-[60px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] p-16 border border-black/[0.03]">
-          <div className="text-center mb-12">
-             <div className="w-20 h-20 bg-[#0f172a] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-2xl rotate-3">
-               <Fingerprint size={40} strokeWidth={1} />
+      <div className="min-h-screen bg-[#fdfcfb] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Background Ambient Decor */}
+        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-rose-500/5 blur-[150px] -translate-y-1/2 translate-x-1/2 rounded-full" />
+        <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] translate-y-1/2 -translate-x-1/2 rounded-full" />
+
+        <div className="w-full max-w-xl bg-white rounded-[70px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] p-20 border border-black/[0.02] relative z-10 animate-in zoom-in-95 duration-700">
+          <div className="text-center mb-16">
+             <div className="w-24 h-24 bg-[#0f172a] rounded-[36px] mx-auto mb-10 flex items-center justify-center text-white shadow-[0_30px_60px_-15px_rgba(15,23,42,0.4)] rotate-3">
+               <Fingerprint size={48} strokeWidth={1} />
              </div>
-             <h2 className="serif text-5xl italic mb-3">Atelier Access</h2>
-             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-black/30">Personnel Validation Required</p>
+             <h2 className="serif text-6xl italic mb-4 leading-none">Atelier Access</h2>
+             <p className="text-[11px] font-black uppercase tracking-[0.6em] text-black/20 italic">Encrypted Registry Protocol</p>
           </div>
-          {authError && <p className="mb-6 text-rose-500 text-[10px] font-black uppercase text-center animate-pulse">{authError}</p>}
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-widest text-black/20 ml-4">Identity Identifier</label>
-              <input type="email" placeholder="IDENTITY@MUSE.COM" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full px-8 py-5 bg-[#f8fafc] rounded-3xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 focus:ring-rose-500/5 outline-none transition-all" required />
+          
+          {authError && (
+            <div className="mb-10 p-6 bg-rose-50 border border-rose-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4">
+              <AlertCircle size={20} className="text-rose-500 shrink-0" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">{authError}</p>
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-widest text-black/20 ml-4">Cryptographic Key</label>
-              <input type="password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full px-8 py-5 bg-[#f8fafc] rounded-3xl text-[11px] font-bold tracking-widest focus:ring-4 focus:ring-rose-500/5 outline-none transition-all" required />
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-10">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-black/20 ml-6 italic leading-none">Identity Handle</label>
+              <div className="relative">
+                <Mail className="absolute left-8 top-1/2 -translate-y-1/2 text-black/10" size={20} />
+                <input 
+                  type="email" 
+                  placeholder="ID@SEOULMUSE.COM" 
+                  value={loginEmail} 
+                  onChange={(e) => setLoginEmail(e.target.value)} 
+                  className="w-full pl-20 pr-10 py-7 bg-[#f8fafc] rounded-[36px] text-[12px] font-bold uppercase tracking-widest focus:ring-4 focus:ring-rose-500/5 outline-none transition-all placeholder:text-black/10" 
+                  required 
+                />
+              </div>
             </div>
-            <button type="submit" className="w-full bg-[#0f172a] text-white font-black py-6 rounded-3xl shadow-2xl hover:bg-rose-600 transition-all uppercase tracking-[0.4em] text-[11px] mt-4">
-              {isAuthenticating ? <Loader2 className="animate-spin mx-auto" /> : 'Validate & Authorize'}
+            
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-black/20 ml-6 italic leading-none">Access Key</label>
+              <div className="relative">
+                <Lock className="absolute left-8 top-1/2 -translate-y-1/2 text-black/10" size={20} />
+                <input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={loginPassword} 
+                  onChange={(e) => setLoginPassword(e.target.value)} 
+                  className="w-full pl-20 pr-10 py-7 bg-[#f8fafc] rounded-[36px] text-[12px] font-bold tracking-[0.4em] focus:ring-4 focus:ring-rose-500/5 outline-none transition-all placeholder:text-black/10" 
+                  required 
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="w-full bg-[#0f172a] text-white font-black py-8 rounded-[40px] shadow-[0_30px_60px_-15px_rgba(15,23,42,0.3)] hover:bg-rose-600 transition-all uppercase tracking-[0.5em] text-[12px] mt-4 flex items-center justify-center gap-4 active:scale-95">
+              {isAuthenticating ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
+              {isAuthenticating ? 'Authenticating...' : 'Validate & Authorize'}
             </button>
           </form>
-          <div className="mt-10 text-center">
-            <button onClick={() => { setLoginEmail('admin@seoulmuse.com'); setLoginPassword('admin'); }} className="text-[9px] font-black text-rose-500/40 uppercase tracking-[0.5em] hover:text-rose-500 transition-colors">Master Key Emulation</button>
+
+          {/* Role Emulation / Quick Access */}
+          <div className="mt-20 pt-16 border-t border-black/[0.03]">
+            <p className="text-center text-[9px] font-black uppercase tracking-[0.5em] text-black/20 mb-10">Simulation Protocol: Select Role</p>
+            <div className="grid grid-cols-3 gap-6">
+                <button 
+                  onClick={() => quickLogin(Role.SUPER_ADMIN)}
+                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-sm">
+                        <ShieldCheck size={24} strokeWidth={1.5} />
+                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-[#0f172a]">Super</span>
+                </button>
+                <button 
+                  onClick={() => quickLogin(Role.MANAGER)}
+                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-rose-500 group-hover:text-white transition-all shadow-sm">
+                        <Briefcase size={24} strokeWidth={1.5} />
+                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-rose-500">Manager</span>
+                </button>
+                <button 
+                  onClick={() => quickLogin(Role.SUPPORT)}
+                  className="group flex flex-col items-center gap-3 p-4 rounded-3xl hover:bg-slate-50 transition-all"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
+                        <UserCircle size={24} strokeWidth={1.5} />
+                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-indigo-500">Support</span>
+                </button>
+            </div>
           </div>
         </div>
         <ViewToggle />

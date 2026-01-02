@@ -16,8 +16,13 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
   const [stylingAdvice, setStylingAdvice] = useState<Record<string, string>>({});
   const [loadingAdvice, setLoadingAdvice] = useState<string | null>(null);
   const [trendAlert, setTrendAlert] = useState<string>("");
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
+  // Initialize cart from persistent storage
   useEffect(() => {
+    const savedCart = localStorage.getItem('seoul_muse_cart');
+    if (savedCart) setCart(JSON.parse(savedCart));
+    
     const fetchTrend = async () => {
       const trend = await getTrendRadar();
       setTrendAlert(trend);
@@ -25,12 +30,59 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
     fetchTrend();
   }, []);
 
-  const addToCart = async (product: Product) => {
-    if (product.stock <= 0) return;
-    setCart([...cart, product]);
+  // Sync cart to storage
+  useEffect(() => {
+    localStorage.setItem('seoul_muse_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  const addToCart = (product: Product) => {
+    if (product.stock <= 0) {
+      alert("Artifact archived: Out of stock.");
+      return;
+    }
+    setCart(prev => [...prev, { ...product, cartId: Date.now() }]);
     setIsCartOpen(true);
-    await inventoryService.adjustStock(product.id, -1);
-    setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - 1 } : p));
+  };
+
+  const removeFromCart = (cartId: number) => {
+    setCart(prev => prev.filter(item => item.cartId !== cartId));
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    setIsProcessingCheckout(true);
+    try {
+      // Group items for order
+      const items = cart.reduce((acc: any[], item: any) => {
+        const existing = acc.find(i => i.productId === item.id);
+        if (existing) existing.quantity += 1;
+        else acc.push({ productId: item.id, name: item.name, quantity: 1, price: item.price });
+        return acc;
+      }, []);
+
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      
+      await inventoryService.placeOrder({
+        items,
+        total,
+        customerName: 'Muse Resident',
+        customerEmail: 'resident@seoulmuse.com'
+      });
+
+      setCart([]);
+      setIsCartOpen(false);
+      alert("Order Manifested. Your collection is being prepared in Seongsu.");
+      
+      // Sync products to reflect stock change
+      const updatedProducts = await inventoryService.getProducts({ 
+        search: '', category: 'All', status: 'All' as any, stockLevel: 'All', sortBy: 'name', sortOrder: 'asc' 
+      });
+      setProducts(updatedProducts);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsProcessingCheckout(false);
+    }
   };
 
   const fetchAdvice = async (productName: string, id: string) => {
@@ -75,15 +127,13 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
         </div>
       </nav>
 
-      {/* Hero Section: Pixel-Perfect Reference Match */}
+      {/* Hero Section */}
       <section className="relative min-h-screen flex items-center px-8 md:px-20 pt-40 pb-20 overflow-hidden">
-        {/* Massive Background Text */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] text-[35rem] font-bold serif leading-none select-none pointer-events-none z-0">
           MUSE
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center w-full relative z-10">
-            {/* Editorial Copy */}
             <div className="lg:col-span-5 flex flex-col items-start stagger-in">
                 <div className="flex items-center gap-4 mb-12">
                     <span className="h-[1px] w-14 bg-rose-500" />
@@ -96,24 +146,14 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                 <p className="max-w-md text-black/40 font-medium leading-relaxed mb-20 text-xl italic serif">
                   An exploration of industrial structure and soft draping. Designed in Seongsu-dong, made for the world.
                 </p>
-                
                 <div className="flex flex-col sm:flex-row items-center gap-12">
                     <button className="bg-black text-white px-16 py-8 rounded-full font-black uppercase text-[11px] tracking-[0.4em] hover:bg-rose-600 transition-all flex items-center gap-10 group shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)]">
                         Explore Exhibit <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                     </button>
-                    <div className="flex items-center gap-6 group cursor-default">
-                        <div className="flex -space-x-4">
-                            {[20, 21, 22].map(i => (
-                                <img key={i} src={`https://i.pravatar.cc/100?img=${i}`} className="w-14 h-14 rounded-full border-4 border-[#fdfcfb] object-cover grayscale" />
-                            ))}
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            {/* Visual Column */}
             <div className="lg:col-span-7 relative flex items-center justify-center lg:justify-end">
-                {/* Large Pill-Shaped Image Container */}
                 <div className="relative aspect-[4/5] w-full max-w-[640px] rounded-[180px] overflow-hidden shadow-[0_80px_120px_-40px_rgba(0,0,0,0.18)] border-[6px] border-white group">
                     <img 
                         src="https://images.unsplash.com/photo-1589156206699-bc21e38c8a7d?q=80&w=2000&auto=format&fit=crop" 
@@ -121,8 +161,6 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                         className="w-full h-full object-cover transition-transform duration-[6s] group-hover:scale-110 ease-out"
                         loading="eager"
                     />
-                    
-                    {/* The Seongsu Edit - Floating Card Overlay */}
                     <div className="absolute bottom-12 left-12 w-[340px] z-20 animate-in slide-in-from-bottom-10 duration-1000">
                       <div className="bg-black/20 backdrop-blur-3xl p-10 rounded-[60px] border border-white/10 shadow-2xl transition-transform group-hover:-translate-y-4 duration-1000">
                           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/50 block mb-4">Current Exhibit</span>
@@ -133,18 +171,12 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                           </div>
                       </div>
                     </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-40" />
                 </div>
-                
-                {/* Abstract Background Decor */}
-                <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-rose-500 rounded-full blur-[140px] opacity-10 animate-pulse pointer-events-none" />
-                <div className="absolute top-20 -right-20 w-60 h-60 bg-indigo-500 rounded-full blur-[120px] opacity-5 pointer-events-none" />
             </div>
         </div>
       </section>
 
-      {/* AI Market Signal Banner */}
+      {/* AI Trend Sync Banner */}
       <section className="px-8 md:px-20 mb-40">
         <div className="bg-white border border-black/[0.04] p-12 rounded-[70px] flex flex-col md:flex-row items-center justify-between gap-10 shadow-sm relative group overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-rose-600" />
@@ -157,17 +189,10 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                     <p className="serif text-2xl italic font-medium leading-tight">"{trendAlert || 'Analyzing architectural movements in Cheongdam...'}"</p>
                 </div>
             </div>
-            <div className="flex items-center gap-8">
-                <button className="p-4 rounded-full border border-black/5 hover:bg-rose-50 transition-all">
-                    <Instagram size={22} className="text-black/30 hover:text-rose-500" />
-                </button>
-                <div className="h-10 w-[1px] bg-black/5 mx-2" />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-black/30">Updated 2m ago</span>
-            </div>
         </div>
       </section>
 
-      {/* Product Archive */}
+      {/* Product Archive Grid */}
       <section className="px-8 md:px-20 py-10 bg-white">
         <div className="flex flex-col md:flex-row justify-between items-baseline mb-48 gap-16">
             <div>
@@ -206,7 +231,6 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                                 alt={product.name} 
                                 className={`w-full h-full object-cover transition-all duration-[3s] ${product.stock <= 0 ? 'grayscale opacity-50' : ''}`}
                             />
-                            
                             <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors duration-1000" />
                             
                             {product.stock <= 0 ? (
@@ -232,7 +256,6 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                                     {product.name}
                                 </h3>
                             </div>
-
                             {!stylingAdvice[product.id] ? (
                                 <button 
                                     onClick={() => fetchAdvice(product.name, product.id)}
@@ -272,12 +295,15 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                 
                 <div className="flex-1 overflow-y-auto space-y-20 no-scrollbar pr-6">
                     {cart.map((item, idx) => (
-                        <div key={idx} className="flex gap-12 items-center group animate-in fade-in slide-in-from-bottom-6" style={{ animationDelay: `${idx * 0.15}s` }}>
+                        <div key={`${item.id}-${item.cartId}`} className="flex gap-12 items-center group animate-in fade-in slide-in-from-bottom-6">
                             <div className="w-32 h-44 rounded-[50px] overflow-hidden shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-1000">
                                 <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-black text-[12px] uppercase tracking-[0.4em] mb-4 opacity-30">{item.name}</h4>
+                                <div className="flex justify-between items-start">
+                                    <h4 className="font-black text-[12px] uppercase tracking-[0.4em] mb-4 opacity-30">{item.name}</h4>
+                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16}/></button>
+                                </div>
                                 <p className="serif text-4xl italic text-rose-600">${item.price}</p>
                             </div>
                         </div>
@@ -293,10 +319,15 @@ const Storefront: React.FC<StorefrontProps> = ({ products, setProducts }) => {
                 <div className="pt-24 mt-12 border-t border-black/[0.04]">
                     <div className="flex justify-between items-center mb-20">
                         <span className="text-[12px] font-black uppercase tracking-[0.6em] opacity-30 italic">Collective Total</span>
-                        <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0)}</span>
+                        <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
                     </div>
-                    <button className="w-full bg-black text-white py-10 rounded-full font-black text-[12px] uppercase tracking-[0.6em] hover:bg-rose-600 transition-all shadow-3xl">
-                        Proceed to Fulfillment
+                    <button 
+                        onClick={handleCheckout}
+                        disabled={cart.length === 0 || isProcessingCheckout}
+                        className="w-full bg-black text-white py-10 rounded-full font-black text-[12px] uppercase tracking-[0.6em] hover:bg-rose-600 transition-all shadow-3xl flex items-center justify-center gap-4 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                    >
+                        {isProcessingCheckout && <Loader2 className="animate-spin" size={20} />}
+                        {isProcessingCheckout ? 'Authorizing Collection...' : 'Proceed to Fulfillment'}
                     </button>
                 </div>
             </div>

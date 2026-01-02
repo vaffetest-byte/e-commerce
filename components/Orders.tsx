@@ -1,16 +1,28 @@
-
-import React, { useState } from 'react';
-import { Search, Filter, Eye, CheckCircle, Truck, XCircle, MoreVertical, CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Eye, CheckCircle, Truck, XCircle, MoreVertical, CreditCard, Loader2 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
+import { inventoryService } from '../services/inventoryService';
 
 interface OrdersProps {
   orders: Order[];
   onUpdateOrder: (order: Order) => void;
 }
 
-const Orders: React.FC<OrdersProps> = ({ orders, onUpdateOrder }) => {
+const Orders: React.FC<OrdersProps> = ({ orders: initialOrders, onUpdateOrder }) => {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [filter, setFilter] = useState<OrderStatus | 'All'>('All');
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      const data = await inventoryService.getOrders();
+      setOrders(data);
+      setLoading(false);
+    };
+    fetchOrders();
+  }, []);
 
   const getStatusStyle = (status: OrderStatus) => {
     switch (status) {
@@ -22,8 +34,10 @@ const Orders: React.FC<OrdersProps> = ({ orders, onUpdateOrder }) => {
     }
   };
 
-  const updateStatus = (order: Order, newStatus: OrderStatus) => {
-    onUpdateOrder({ ...order, status: newStatus });
+  const updateStatus = async (order: Order, newStatus: OrderStatus) => {
+    await inventoryService.updateOrderStatus(order.id, newStatus);
+    const updated = await inventoryService.getOrders();
+    setOrders(updated);
   };
 
   const filteredOrders = orders.filter(o => 
@@ -66,6 +80,9 @@ const Orders: React.FC<OrdersProps> = ({ orders, onUpdateOrder }) => {
         </div>
 
         <div className="overflow-x-auto">
+          {loading ? (
+            <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-rose-500" /></div>
+          ) : (
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50">
@@ -91,7 +108,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, onUpdateOrder }) => {
                   <td className="px-12 py-8">
                     <div className="flex -space-x-2">
                         {order.items.map((item, i) => (
-                            <div key={i} className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-black">
+                            <div key={i} title={item.name} className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-black">
                                 {item.quantity}
                             </div>
                         ))}
@@ -124,6 +141,7 @@ const Orders: React.FC<OrdersProps> = ({ orders, onUpdateOrder }) => {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
     </div>
