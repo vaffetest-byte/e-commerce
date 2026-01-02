@@ -1,0 +1,7 @@
+{
+  "name": "Idea of 2026",
+  "description": "A high-performance, secure, and AI-enhanced admin dashboard for custom e-commerce platforms, featuring real-time analytics, order management, and RBAC.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
