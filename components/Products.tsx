@@ -5,7 +5,7 @@ import {
   X, Image as ImageIcon, Check, AlertCircle,
   Link as LinkIcon, Layers,
   Archive, Eye, Filter, CheckSquare, Square,
-  Upload, UploadCloud
+  UploadCloud
 } from 'lucide-react';
 import { ProductStatus, Product, InventoryFilters } from '../types';
 import { inventoryService } from '../services/inventoryService';
@@ -117,7 +117,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
       setLoading(true);
       try {
         const idsToDelete = Array.from(selectedIds) as string[];
-        // Perform deletions sequentially or in parallel; parallel is faster but we want reliability
         await Promise.all(idsToDelete.map(id => inventoryService.deleteProduct(id)));
         setSelectedIds(new Set());
         showFeedback(`${idsToDelete.length} artifacts terminated successfully.`, "success");
@@ -145,7 +144,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
     }
   };
 
-  // --- IMAGE UPLOAD HANDLING ---
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       showFeedback("Invalid artifact: Please select an image file.", "error");
@@ -159,7 +157,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
     setIsUploading(true);
     setUploadProgress(0);
     
-    // Smooth progress simulation for visual feedback
     const startTime = Date.now();
     const duration = 800;
     const interval = setInterval(() => {
@@ -244,7 +241,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
 
   return (
     <div className="space-y-12 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-32">
-      {/* Universal Feedback Layer */}
       {feedback.type && (
         <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[600] px-10 py-5 rounded-full shadow-2xl border flex items-center gap-4 animate-in slide-in-from-top-10 transition-all ${
           feedback.type === 'error' ? 'bg-rose-900 border-rose-800 text-white' : 
@@ -381,7 +377,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
         </div>
       </div>
 
-      {/* Bulk Action Layer */}
       {selectedIds.size > 0 && (
           <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[400] bg-[#0f172a] text-white px-12 py-6 rounded-full shadow-3xl border border-white/10 flex items-center gap-12 animate-in slide-in-from-bottom-10">
               <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{selectedIds.size} Artifacts Selected</span>
@@ -400,7 +395,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
           </div>
       )}
 
-      {/* Entry Manifest Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-slate-900/10 backdrop-blur-md">
           <div className="fixed inset-0" onClick={() => setIsModalOpen(false)} />
@@ -419,7 +413,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-20 items-start">
-              {/* Asset Management Pillar */}
               <div className="md:col-span-4 flex flex-col gap-10">
                 <div 
                   onDragOver={onDragOver}
@@ -470,7 +463,6 @@ const Products: React.FC<ProductsProps> = ({ onUpdate }) => {
                 </div>
               </div>
 
-              {/* Specification Grid */}
               <div className="md:col-span-8 space-y-12">
                 <div className="grid grid-cols-2 gap-10">
                   <div className="space-y-4">
