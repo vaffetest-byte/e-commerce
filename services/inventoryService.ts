@@ -8,7 +8,17 @@ const KEYS = {
   ORDERS: 'seoul_muse_orders_v2',
   COUPONS: 'seoul_muse_coupons_v2',
   CUSTOMERS: 'seoul_muse_customers_v2',
-  HOME_CONFIG: 'seoul_muse_home_config_v3' // Incremented version to force sync new girl image
+  HOME_CONFIG: 'seoul_muse_home_config_v3'
+};
+
+// Simplified "hash" for demonstration; in real production, Supabase Auth handles this.
+const simpleHash = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash.toString(16);
 };
 
 const getLocal = (key: string, fallback: any) => {
@@ -107,13 +117,17 @@ export const inventoryService = {
       shippingAddress: orderData.shippingAddress || 'N/A'
     };
 
-    for (const item of newOrder.items) {
-      await this.adjustStock(item.productId, -item.quantity);
+    // Note: In real app, we link current authenticated user ID here.
+    if (supabase) {
+      const { error } = await supabase.from('orders').insert({
+        ...newOrder,
+        customer_email: newOrder.customerEmail, // mapping for supabase columns if needed
+      });
+      if (error) console.error("Supabase Order Error:", error);
     }
 
-    if (supabase) {
-      const { error } = await supabase.from('orders').insert(newOrder);
-      if (error) console.error("Supabase Order Error:", error);
+    for (const item of newOrder.items) {
+      await this.adjustStock(item.productId, -item.quantity);
     }
 
     const orders = getLocal(KEYS.ORDERS, MOCK_ORDERS);
@@ -160,25 +174,32 @@ export const inventoryService = {
   },
 
   async authenticateCustomer(email: string, password?: string): Promise<Customer | null> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const hashedPassword = password ? simpleHash(password) : undefined;
+
     if (supabase) {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .eq('email', email.toLowerCase())
-        .eq('password', password)
+        .eq('email', normalizedEmail)
+        .eq('password', hashedPassword)
         .single();
       if (!error && data) return data;
     }
+
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
-    return customers.find((c: any) => c.email.toLowerCase() === email.toLowerCase() && (!password || c.password === password)) || null;
+    return customers.find((c: any) => c.email.toLowerCase() === normalizedEmail && (!hashedPassword || c.password === hashedPassword)) || null;
   },
 
   async registerCustomer(customer: Partial<Customer>): Promise<Customer> {
+    const normalizedEmail = (customer.email || '').toLowerCase().trim();
+    const hashedPassword = customer.password ? simpleHash(customer.password) : '';
+
     const newCustomer: Customer = {
       id: `cust-${Date.now()}`,
       name: customer.name || 'Resident',
-      email: customer.email || '',
-      password: customer.password || '',
+      email: normalizedEmail,
+      password: hashedPassword,
       totalOrders: 0,
       totalSpent: 0,
       status: 'Active',
@@ -187,7 +208,10 @@ export const inventoryService = {
 
     if (supabase) {
       const { error } = await supabase.from('customers').insert(newCustomer);
-      if (error) console.error("Supabase Customer Registry Error:", error);
+      if (error) {
+        console.error("Supabase Customer Registry Error:", error);
+        // If supabase insertion fails, we still allow local for the sandbox flow if requested.
+      }
     }
 
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);

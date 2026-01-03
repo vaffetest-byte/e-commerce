@@ -6,7 +6,7 @@ import {
   Fingerprint, ArrowDown, ShieldCheck, CheckCircle2,
   MapPin, CreditCard, Box, Hash, User, Target, Cpu, BookOpen,
   History, Layers, Microscope, Dna, Hexagon, Eye, MousePointer2,
-  TrendingUp, Star
+  TrendingUp, Star, LogOut
 } from 'lucide-react';
 import { Product, Customer, HomeConfig } from '../types';
 import { getTrendRadar, getSearchCuration } from '../geminiService';
@@ -261,6 +261,15 @@ const Storefront: React.FC<StorefrontProps> = ({
                 <button onClick={onNavigateToCatalog} className="hover:text-rose-500 transition-colors">Archive</button>
                 <button onClick={onNavigateToManifesto} className="hover:text-rose-500 transition-colors">Manifesto</button>
                 <button onClick={onNavigateToLab} className="hover:text-rose-500 transition-colors">Lab</button>
+                <div className="h-6 w-[1px] bg-black/5" />
+                {currentCustomer ? (
+                  <button className="flex items-center gap-2 group hover:text-rose-500 transition-colors" onClick={() => { if(window.confirm('Terminate Muse Session?')) onCustomerLogout(); }}>
+                    <span className="text-rose-500 italic serif normal-case text-xs lowercase">@{currentCustomer.name.toLowerCase()}</span>
+                    <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                ) : (
+                  <button onClick={() => setIsAuthOpen(true)} className="hover:text-rose-500 transition-all font-black text-rose-600">Identify / Sign Up</button>
+                )}
             </div>
             <div className="h-6 w-[1px] bg-black/5 hidden lg:block" />
             <div className="flex items-center gap-4 sm:gap-6">

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ShoppingBag, Menu, X, Sparkles, Loader2, 
   ArrowUpRight, Search, ChevronRight, SlidersHorizontal,
-  ArrowRight, Info, Eye, CheckCircle2, Hash
+  ArrowRight, Info, Eye, CheckCircle2, Hash, LogOut
 } from 'lucide-react';
 import { Product, Customer } from '../types';
 import { getFashionAdvice, getTrendRadar, generateProductDescription } from '../geminiService';
@@ -16,6 +16,7 @@ interface CatalogProps {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   currentCustomer: Customer | null;
   onCustomerLogin: (customer: Customer) => void;
+  onCustomerLogout: () => void;
   onNavigateToHome: () => void;
   onNavigateToManifesto: () => void;
   onNavigateToLab: () => void;
@@ -26,6 +27,7 @@ const Catalog: React.FC<CatalogProps> = ({
   setProducts, 
   currentCustomer,
   onCustomerLogin,
+  onCustomerLogout,
   onNavigateToHome, 
   onNavigateToManifesto, 
   onNavigateToLab 
@@ -215,6 +217,15 @@ const Catalog: React.FC<CatalogProps> = ({
                 </button>
                 <button onClick={onNavigateToManifesto} className="hover:text-rose-500 transition-colors uppercase">Manifesto</button>
                 <button onClick={onNavigateToLab} className="hover:text-rose-500 transition-colors uppercase">Lab</button>
+                <div className="h-6 w-[1px] bg-black/5" />
+                {currentCustomer ? (
+                  <button className="flex items-center gap-2 group hover:text-rose-500 transition-colors" onClick={() => { if(window.confirm('Terminate Muse Session?')) onCustomerLogout(); }}>
+                    <span className="text-rose-500 italic serif normal-case text-xs lowercase">@{currentCustomer.name.toLowerCase()}</span>
+                    <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                ) : (
+                  <button onClick={() => setIsAuthOpen(true)} className="hover:text-rose-500 transition-all font-black text-rose-600">Identify / Sign Up</button>
+                )}
             </div>
         </div>
         <div className="flex items-center gap-4 sm:gap-6 md:gap-12">
@@ -281,7 +292,7 @@ const Catalog: React.FC<CatalogProps> = ({
                   <div className="absolute inset-0 flex items-center justify-center sm:opacity-0 group-hover:opacity-100 transition-all">
                     <div className="bg-white/90 backdrop-blur-md px-6 md:px-10 py-3 md:py-5 rounded-full flex items-center gap-3 md:gap-4 shadow-2xl">
                       <Eye size={14} className="text-rose-500 md:w-4 md:h-4" />
-                      <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em]">Observe</span>
+                      <span className="text-[8px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em]">Observe</span>
                     </div>
                   </div>
                   {product.stock === 0 && (
