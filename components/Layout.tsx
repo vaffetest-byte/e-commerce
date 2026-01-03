@@ -13,7 +13,8 @@ import {
   Bell, 
   Search,
   ChevronDown,
-  Monitor
+  Monitor,
+  LifeBuoy
 } from 'lucide-react';
 import { NAVIGATION } from '../constants';
 import { User, Role } from '../types';
@@ -25,7 +26,8 @@ const IconMap: Record<string, any> = {
   ShoppingCart, 
   Users, 
   Ticket, 
-  Settings
+  Settings,
+  LifeBuoy
 };
 
 interface LayoutProps {

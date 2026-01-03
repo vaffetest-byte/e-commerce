@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Role, User, Product, Order, Customer, Coupon } from './types';
-import { ShoppingBag, Loader2, Fingerprint, Monitor, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, Loader2, Fingerprint, Monitor, Lock, Mail, ArrowRight, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { inventoryService } from './services/inventoryService';
 
 const Layout = lazy(() => import('./components/Layout'));
@@ -12,10 +12,12 @@ const Catalog = lazy(() => import('./components/Catalog'));
 const Manifesto = lazy(() => import('./components/Manifesto'));
 const Lab = lazy(() => import('./components/Lab'));
 const Orders = lazy(() => import('./components/Orders'));
+const Support = lazy(() => import('./components/Support'));
 const Customers = lazy(() => import('./components/Customers'));
 const Marketing = lazy(() => import('./components/Marketing'));
 const Settings = lazy(() => import('./components/Settings'));
 const Orchestrator = lazy(() => import('./components/Orchestrator'));
+const Profile = lazy(() => import('./components/Profile'));
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#fdfcfb]">
@@ -30,6 +32,7 @@ const App: React.FC = () => {
   const [activePath, setActivePath] = useState<string>('/');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -128,6 +131,7 @@ const App: React.FC = () => {
   const handleCustomerLogout = () => {
     setCurrentCustomer(null);
     localStorage.removeItem('muse_customer_session');
+    setIsProfileOpen(false);
   };
 
   const ViewToggle = () => (
@@ -147,11 +151,23 @@ const App: React.FC = () => {
     </div>
   );
 
+  const ProfileToggle = () => (
+    currentCustomer && view === 'store' ? (
+      <button 
+        onClick={() => setIsProfileOpen(true)}
+        className="fixed top-28 right-6 md:right-20 z-[200] w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-slate-800 hover:text-rose-500 transition-all border border-black/5"
+      >
+        <UserIcon size={20} />
+      </button>
+    ) : null
+  );
+
   const renderAdminContent = () => {
     switch (activePath) {
       case '/': return <Dashboard />;
       case '/products': return <Products onUpdate={syncAllData} />;
       case '/orders': return <Orders />;
+      case '/support': return <Support />;
       case '/customers': return <Customers customers={customers} />;
       case '/marketing': return <Marketing onUpdateCoupon={syncAllData} />;
       case '/orchestrator': return <Orchestrator />;
@@ -164,6 +180,14 @@ const App: React.FC = () => {
     return (
       <div className="animate-in fade-in duration-1000">
         <Suspense fallback={<LoadingFallback />}>
+          {isProfileOpen && currentCustomer && (
+            <Profile 
+              customer={currentCustomer} 
+              onLogout={handleCustomerLogout} 
+              onClose={() => setIsProfileOpen(false)} 
+              onNavigateToCatalog={() => { setStoreSubView('catalog'); setIsProfileOpen(false); }}
+            />
+          )}
           {storeSubView === 'home' && (
             <Storefront 
               products={products} 
@@ -203,6 +227,7 @@ const App: React.FC = () => {
             />
           )}
         </Suspense>
+        <ProfileToggle />
         <ViewToggle />
       </div>
     );

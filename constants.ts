@@ -19,7 +19,7 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
     ]
   },
   aura: {
-    heading: "Aura Selection",
+    heading: "Metamorphic Registry",
     subheading: "High Conversion Artifacts"
   },
   lab: {
@@ -41,7 +41,14 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Tops', 
     collection: 'Seongsu Edit', 
     socialHeat: 98, 
-    image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=1200&auto=format&fit=crop' 
+    rating: 4.8,
+    image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=1200&auto=format&fit=crop',
+    description: 'A delicate synthesis of botanical forms and technical silk. Features an adjustable ribbon collar for modular styling.',
+    specifications: { Material: '100% Mulberry Silk', Origin: 'Seoul Atelier', Care: 'Dry Clean Only' },
+    gallery: [
+      'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=1200',
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200'
+    ]
   },
   { 
     id: 'g2', 
@@ -53,7 +60,10 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Outerwear', 
     collection: 'Seoul Metamorphosis', 
     socialHeat: 85, 
-    image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop' 
+    rating: 4.9,
+    image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop',
+    description: 'The definitive silhouette for the Seongsu creative. Water-resistant structural nylon with articulated sleeves.',
+    specifications: { Weight: 'Medium', Fit: 'Oversized', Fabric: 'Industrial Tech-Nylon' }
   },
   { 
     id: 'g3', 
@@ -65,6 +75,7 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Co-ords', 
     collection: 'Collection 04', 
     socialHeat: 92, 
+    rating: 4.7,
     image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200&auto=format&fit=crop' 
   },
   { 
@@ -77,6 +88,7 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Dresses', 
     collection: 'Seongsu Edit', 
     socialHeat: 76, 
+    rating: 4.5,
     image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200&auto=format&fit=crop' 
   },
   { 
@@ -89,6 +101,7 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Tops', 
     collection: 'Seoul Metamorphosis', 
     socialHeat: 89, 
+    rating: 4.6,
     image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200&auto=format&fit=crop' 
   },
   { 
@@ -101,9 +114,18 @@ export const MOCK_PRODUCTS: Product[] = [
     category: 'Dresses', 
     collection: 'Collection 04', 
     socialHeat: 95, 
+    rating: 5.0,
     image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?q=80&w=1200&auto=format&fit=crop' 
   },
 ];
+
+export const SHIPPING_METHODS = [
+  { id: 'std', name: 'Standard Logistics', price: 10, est: '3-5 Registry Cycles' },
+  { id: 'exp', name: 'Priority Matrix Express', price: 25, est: '1-2 Registry Cycles' },
+  { id: 'pickup', name: 'Atelier Pickup (Seongsu)', price: 0, est: 'Immediate Availability' }
+];
+
+export const TAX_RATE = 0.10; // 10% VAT
 
 export const MOCK_ORDERS: Order[] = [
   { 
@@ -112,6 +134,9 @@ export const MOCK_ORDERS: Order[] = [
     customerEmail: 's.park@example.com',
     date: '2023-11-05', 
     total: 125.00, 
+    subtotal: 113.64,
+    tax: 11.36,
+    shippingFee: 0,
     status: OrderStatus.PAID, 
     paymentMethod: 'KakaoPay',
     items: [{ productId: 'g3', name: 'Vintage Tweed Set', quantity: 1, price: 125.00 }],
@@ -122,7 +147,10 @@ export const MOCK_ORDERS: Order[] = [
     customerName: 'Chloe Bennett', 
     customerEmail: 'chloe.b@example.com',
     date: '2023-11-06', 
-    total: 77.00, 
+    total: 87.00, 
+    subtotal: 70.00,
+    tax: 7.00,
+    shippingFee: 10,
     status: OrderStatus.SHIPPED, 
     paymentMethod: 'Credit Card',
     items: [
@@ -134,9 +162,21 @@ export const MOCK_ORDERS: Order[] = [
 ];
 
 export const MOCK_CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'Soo-young Park', email: 's.park@example.com', totalOrders: 12, totalSpent: 1450.00, status: 'Active', joinedDate: '2023-01-12' },
-  { id: 'c2', name: 'James Wilson', email: 'j.wilson@example.com', totalOrders: 1, totalSpent: 42.00, status: 'Active', joinedDate: '2023-11-02' },
-  { id: 'c3', name: 'Min-ji Kim', email: 'minji@kpop.kr', totalOrders: 45, totalSpent: 5200.00, status: 'Active', joinedDate: '2022-05-20' },
+  { 
+    id: 'c1', 
+    name: 'Soo-young Park', 
+    email: 's.park@example.com', 
+    totalOrders: 12, 
+    totalSpent: 1450.00, 
+    status: 'Active', 
+    joinedDate: '2023-01-12',
+    wishlist: ['g1', 'g6'],
+    addresses: [
+      { fullName: 'Soo-young Park', street: '123 Gangnam-daero', city: 'Seoul', state: 'Seoul', postalCode: '06234', country: 'KR' }
+    ]
+  },
+  { id: 'c2', name: 'James Wilson', email: 'j.wilson@example.com', totalOrders: 1, totalSpent: 42.00, status: 'Active', joinedDate: '2023-11-02', wishlist: [], addresses: [] },
+  { id: 'c3', name: 'Min-ji Kim', email: 'minji@kpop.kr', totalOrders: 45, totalSpent: 5200.00, status: 'Active', joinedDate: '2022-05-20', wishlist: [], addresses: [] },
 ];
 
 export const MOCK_COUPONS: Coupon[] = [
@@ -160,8 +200,42 @@ export const NAVIGATION = [
   { name: 'Dashboard', icon: 'LayoutDashboard', path: '/', roles: [Role.SUPER_ADMIN, Role.MANAGER, Role.SUPPORT] },
   { name: 'Inventory', icon: 'Box', path: '/products', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'Orders', icon: 'ShoppingCart', path: '/orders', roles: [Role.SUPER_ADMIN, Role.MANAGER, Role.SUPPORT] },
+  { name: 'Support', icon: 'LifeBuoy', path: '/support', roles: [Role.SUPER_ADMIN, Role.SUPPORT] },
   { name: 'Storefront', icon: 'Monitor', path: '/orchestrator', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'Muses', icon: 'Users', path: '/customers', roles: [Role.SUPER_ADMIN, Role.SUPPORT] },
   { name: 'Coupons', icon: 'Ticket', path: '/marketing', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'System', icon: 'Settings', path: '/settings', roles: [Role.SUPER_ADMIN] },
 ];
+
+export const EXCHANGE_RATES: Record<string, number> = {
+  USD: 1,
+  KRW: 1350,
+  EUR: 0.92
+};
+
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  KRW: '₩',
+  EUR: '€'
+};
+
+export const TRANSLATIONS = {
+  EN: {
+    archive: 'Archive',
+    manifesto: 'Manifesto',
+    lab: 'Lab',
+    identify: 'Identify',
+    collection: 'Collection',
+    total: 'Total',
+    checkout: 'Checkout'
+  },
+  KR: {
+    archive: '아카이브',
+    manifesto: '매니페스토',
+    lab: '연구소',
+    identify: '본인확인',
+    collection: '컬렉션',
+    total: '합계',
+    checkout: '결제하기'
+  }
+};
