@@ -182,6 +182,7 @@ const App: React.FC = () => {
               setProducts={setProducts} 
               currentCustomer={currentCustomer}
               onCustomerLogin={handleCustomerLogin}
+              onCustomerLogout={handleCustomerLogout}
               onNavigateToHome={() => setStoreSubView('home')} 
               onNavigateToManifesto={() => setStoreSubView('manifesto')}
               onNavigateToLab={() => setStoreSubView('lab')}
