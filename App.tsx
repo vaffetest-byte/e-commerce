@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Role, User, Product, Order, Customer, Coupon } from './types';
-import { ShoppingBag, Loader2, Fingerprint, Monitor } from 'lucide-react';
+import { ShoppingBag, Loader2, Fingerprint, Monitor, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import { inventoryService } from './services/inventoryService';
 
 const Layout = lazy(() => import('./components/Layout'));
@@ -94,6 +94,7 @@ const App: React.FC = () => {
     let user: User | null = null;
     const normalizedEmail = loginEmail.toLowerCase().trim();
     
+    // Admin Credential Matrix
     if (normalizedEmail === 'admin@seoulmuse.com' && loginPassword === 'admin') {
       user = { id: 'usr-001', name: 'Alexander Pierce', email: 'admin@seoulmuse.com', role: Role.SUPER_ADMIN, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' };
     } else if (normalizedEmail === 'manager@seoulmuse.com' && loginPassword === 'manager') {
@@ -108,9 +109,15 @@ const App: React.FC = () => {
       localStorage.setItem('muse_admin_session', JSON.stringify(user));
       setActivePath('/');
     } else {
-      setAuthError('Identity validation failed.');
+      setAuthError('Identity validation failed. Access denied.');
     }
     setIsAuthenticating(false);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    localStorage.removeItem('muse_admin_session');
   };
 
   const handleCustomerLogin = (customer: Customer) => {
@@ -139,6 +146,18 @@ const App: React.FC = () => {
       </button>
     </div>
   );
+
+  const renderAdminContent = () => {
+    switch (activePath) {
+      case '/': return <Dashboard />;
+      case '/products': return <Products onUpdate={syncAllData} />;
+      case '/orders': return <Orders />;
+      case '/customers': return <Customers customers={customers} />;
+      case '/marketing': return <Marketing onUpdateCoupon={syncAllData} />;
+      case '/settings': return <Settings />;
+      default: return <Dashboard />;
+    }
+  };
 
   if (view === 'store') {
     return (
@@ -187,12 +206,85 @@ const App: React.FC = () => {
     );
   }
 
-  // Admin Login and Layout remains the same...
+  // Admin View Logic
   return (
-    <div className="animate-in fade-in duration-1000">
-      <Suspense fallback={<LoadingFallback />}>
-        {/* ... existing admin auth and layout ... */}
-      </Suspense>
+    <div className="animate-in fade-in duration-1000 min-h-screen bg-slate-50">
+      {!isAuthenticated ? (
+        <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-3xl z-0" />
+          <div className="relative z-10 w-full max-w-xl bg-white p-12 sm:p-20 rounded-[60px] shadow-3xl border border-slate-100 animate-in zoom-in-95 duration-700">
+            <div className="text-center mb-16">
+              <div className="w-20 h-20 bg-black rounded-[30px] flex items-center justify-center text-white mx-auto mb-10 shadow-2xl rotate-3">
+                <Fingerprint size={32} strokeWidth={1} />
+              </div>
+              <h1 className="serif text-5xl italic font-light tracking-tighter mb-4">Atelier <span className="not-italic font-bold">Admin</span></h1>
+              <p className="text-[9px] font-black uppercase tracking-[0.5em] text-black/20 italic">Encrypted Registry Access</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/30 ml-6">Registry Handle</label>
+                <div className="relative group">
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-black/10 group-focus-within:text-rose-500 transition-colors" size={18} />
+                  <input 
+                    type="email" 
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="ADMIN@SEOULMUSE.COM"
+                    className="w-full pl-16 pr-8 py-6 bg-slate-50 rounded-[30px] text-[11px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-rose-500/5 transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-black/30 ml-6">Access Protocol</label>
+                <div className="relative group">
+                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-black/10 group-focus-within:text-rose-500 transition-colors" size={18} />
+                  <input 
+                    type="password" 
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-16 pr-8 py-6 bg-slate-50 rounded-[30px] text-[11px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-rose-500/5 transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              {authError && (
+                <div className="p-5 bg-rose-50 border border-rose-100 rounded-3xl flex items-center gap-4 text-rose-600">
+                  <ShieldCheck size={16} />
+                  <p className="text-[10px] font-black uppercase tracking-widest">{authError}</p>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                disabled={isAuthenticating}
+                className="w-full bg-black text-white py-8 rounded-full font-black text-[11px] uppercase tracking-[0.6em] hover:bg-rose-600 transition-all shadow-2xl flex items-center justify-center gap-6 group"
+              >
+                {isAuthenticating ? <Loader2 className="animate-spin" /> : <ShieldCheck size={18} className="group-hover:scale-125 transition-transform" />}
+                Authorize Registry
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <Suspense fallback={<LoadingFallback />}>
+          <Layout 
+            user={currentUser!} 
+            onLogout={handleLogout} 
+            activePath={activePath} 
+            onNavigate={(path) => setActivePath(path)}
+          >
+            <div className="animate-in fade-in duration-1000">
+              {renderAdminContent()}
+            </div>
+          </Layout>
+        </Suspense>
+      )}
+      <ViewToggle />
     </div>
   );
 };
