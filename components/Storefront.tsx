@@ -1,464 +1,454 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ShoppingBag, Menu, X, Sparkles, Loader2, ArrowUpRight, Search, Instagram, ChevronRight, ArrowRight, RefreshCw, Command } from 'lucide-react';
-import { Product } from '../types';
-import { getFashionAdvice, getTrendRadar, getSearchCuration } from '../geminiService';
+import { 
+  ShoppingBag, Menu, X, Sparkles, Loader2, ArrowUpRight, 
+  Search, ChevronRight, ArrowRight, Command, Globe, 
+  Fingerprint, ArrowDown, ShieldCheck, CheckCircle2,
+  MapPin, CreditCard, Box, Hash, User, Target, Cpu, BookOpen,
+  History, Layers, Microscope, Dna, Hexagon
+} from 'lucide-react';
+import { Product, Customer } from '../types';
+import { getTrendRadar, getSearchCuration } from '../geminiService';
 import { inventoryService } from '../services/inventoryService';
+import CustomerAuth from './CustomerAuth';
 import Footer from './Footer';
 
 interface StorefrontProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  currentCustomer: Customer | null;
+  onCustomerLogin: (customer: Customer) => void;
+  onCustomerLogout: () => void;
   onNavigateToCatalog: () => void;
   onNavigateToManifesto: () => void;
   onNavigateToLab: () => void;
 }
 
-const Storefront: React.FC<StorefrontProps> = ({ products, setProducts, onNavigateToCatalog, onNavigateToManifesto, onNavigateToLab }) => {
+const Storefront: React.FC<StorefrontProps> = ({ 
+  products, setProducts, currentCustomer, onCustomerLogin, onCustomerLogout,
+  onNavigateToCatalog, onNavigateToManifesto, onNavigateToLab 
+}) => {
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [stylingAdvice, setStylingAdvice] = useState<Record<string, string>>({});
-  const [loadingAdvice, setLoadingAdvice] = useState<string | null>(null);
   const [trendAlert, setTrendAlert] = useState<string>("");
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
 
-  // Search States
+  // Auth/Search States
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [aiSearchInsight, setAiSearchInsight] = useState<string | null>(null);
   const [isAiCurating, setIsAiCurating] = useState(false);
   const overlaySearchInputRef = useRef<HTMLInputElement>(null);
 
+  // Checkout States
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'payment'>('cart');
+  const [acquisitionSuccess, setAcquisitionSuccess] = useState<string | null>(null);
+
   useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     const savedCart = localStorage.getItem('seoul_muse_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
-    
-    const fetchTrend = async () => {
-      const trend = await getTrendRadar();
-      setTrendAlert(trend);
-    };
+    const fetchTrend = async () => { setTrendAlert(await getTrendRadar()); };
     fetchTrend();
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Registry Revalidation
-  useEffect(() => {
-    if (products.length > 0 && cart.length > 0) {
-      const validProductIds = new Set(products.map(p => p.id));
-      const validatedCart = cart.filter(item => validProductIds.has(item.id));
-      
-      if (validatedCart.length !== cart.length) {
-        setIsSyncing(true);
-        setCart(validatedCart);
-        setTimeout(() => setIsSyncing(false), 2000);
-      }
-    }
-  }, [products]);
+  useEffect(() => { localStorage.setItem('seoul_muse_cart', JSON.stringify(cart)); }, [cart]);
 
-  useEffect(() => {
-    localStorage.setItem('seoul_muse_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  // AI Search Intelligence Trigger
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (searchQuery.length > 3) {
         setIsAiCurating(true);
-        const insight = await getSearchCuration(searchQuery);
-        setAiSearchInsight(insight);
+        setAiSearchInsight(await getSearchCuration(searchQuery));
         setIsAiCurating(false);
-      } else {
-        setAiSearchInsight(null);
-      }
+      } else { setAiSearchInsight(null); }
     }, 1000);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
-    const query = searchQuery.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query) || 
-      p.category.toLowerCase().includes(query) ||
-      (p.collection && p.collection.toLowerCase().includes(query))
-    );
+    return products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [searchQuery, products]);
 
   const addToCart = (product: Product) => {
-    if (product.stock <= 0) {
-      alert("Artifact archived: Out of stock.");
-      return;
-    }
+    if (product.stock <= 0) return;
     setCart(prev => [...prev, { ...product, cartId: Date.now() }]);
     setIsCartOpen(true);
+    setCheckoutStep('cart');
   };
 
-  const removeFromCart = (cartId: number) => {
-    setCart(prev => prev.filter(item => item.cartId !== cartId));
+  const removeFromCart = (cartId: number) => { setCart(prev => prev.filter(item => item.cartId !== cartId)); };
+
+  const handleCheckoutInitiate = () => {
+    if (!currentCustomer) {
+      setIsAuthOpen(true);
+      return;
+    }
+    handleCheckout(); // Direct acquisition if already identified
   };
 
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !currentCustomer) return;
     setIsProcessingCheckout(true);
     try {
       const total = cart.reduce((sum, item) => sum + item.price, 0);
-      await inventoryService.placeOrder({
+      const order = await inventoryService.placeOrder({
         items: cart.map(i => ({ productId: i.id, name: i.name, quantity: 1, price: i.price })),
         total,
-        customerName: 'Muse Resident',
-        customerEmail: 'resident@seoulmuse.com'
+        customerName: currentCustomer.name,
+        customerEmail: currentCustomer.email,
+        shippingAddress: 'Seoul Terminal 4, Seongsu Atelier Dist.'
       });
+      setAcquisitionSuccess(order.id);
       setCart([]);
       setIsCartOpen(false);
-      const updated = await inventoryService.getProducts();
-      setProducts(updated);
-      alert("Acquisition Finalized.");
-    } catch (err: any) {
-      alert(err.message);
+      const updatedProducts = await inventoryService.getProducts();
+      setProducts(updatedProducts);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsProcessingCheckout(false);
     }
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop'; 
-  };
-
-  const openSearch = () => {
-    setIsSearchActive(true);
-    setTimeout(() => overlaySearchInputRef.current?.focus(), 100);
-  };
-
   return (
     <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-0 relative">
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[800] lg:hidden animate-in fade-in duration-500">
-          <div className="absolute inset-0 bg-white/98 backdrop-blur-3xl" />
-          <div className="relative h-full flex flex-col p-8 pt-32">
-            <button 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="absolute top-6 right-6 p-4 hover:bg-slate-50 rounded-full transition-all group"
-            >
-              <X size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
-            </button>
-            <div className="space-y-12 stagger-in">
-              <span className="text-[10px] font-black uppercase tracking-[1em] text-rose-500 block mb-4 italic">Navigation Registry</span>
-              <div className="flex flex-col gap-10">
-                <button 
-                  onClick={() => { onNavigateToCatalog(); setIsMobileMenuOpen(false); }} 
-                  className="serif text-5xl italic font-light text-left hover:text-rose-600 transition-colors transform hover:translate-x-4 duration-500"
-                >
-                  The Archives
-                </button>
-                <button 
-                  onClick={() => { onNavigateToManifesto(); setIsMobileMenuOpen(false); }} 
-                  className="serif text-5xl italic font-light text-left hover:text-rose-600 transition-colors transform hover:translate-x-4 duration-500"
-                >
-                  Manifesto
-                </button>
-                <button 
-                  onClick={() => { onNavigateToLab(); setIsMobileMenuOpen(false); }} 
-                  className="serif text-5xl italic font-light text-left hover:text-rose-600 transition-colors transform hover:translate-x-4 duration-500"
-                >
-                  Experimental Lab
-                </button>
-              </div>
+      
+      {isAuthOpen && (
+        <CustomerAuth 
+          onSuccess={(c) => { onCustomerLogin(c); setIsAuthOpen(false); }} 
+          onClose={() => setIsAuthOpen(false)} 
+        />
+      )}
+
+      {/* Success Modal */}
+      {acquisitionSuccess && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl animate-in fade-in duration-1000" onClick={() => setAcquisitionSuccess(null)} />
+            <div className="relative bg-white w-full max-w-2xl rounded-[60px] p-12 sm:p-20 text-center shadow-3xl animate-in zoom-in-95 duration-700">
+                <div className="w-24 h-24 bg-rose-500 rounded-full mx-auto mb-12 flex items-center justify-center text-white shadow-2xl animate-bounce">
+                    <CheckCircle2 size={48} strokeWidth={1} />
+                </div>
+                <h2 className="serif text-6xl md:text-8xl italic font-light tracking-tighter mb-8">Acquisition <span className="font-bold not-italic text-rose-600">Complete.</span></h2>
+                <p className="text-xl serif italic text-black/40 mb-16 leading-relaxed">Recorded for Resident {currentCustomer?.name}. Prepared for dispatch from Seongsu Atelier.</p>
+                <div className="bg-slate-50 p-8 rounded-[30px] border border-slate-100 mb-16 flex items-center justify-between">
+                    <div className="text-left">
+                        <span className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 block mb-1">Acquisition ID</span>
+                        <p className="font-mono text-xs font-black tracking-widest text-rose-600">{acquisitionSuccess}</p>
+                    </div>
+                    <Hash size={24} className="text-black/5" />
+                </div>
+                <button onClick={() => setAcquisitionSuccess(null)} className="w-full bg-black text-white py-8 rounded-full font-black uppercase tracking-[0.6em] text-[11px] hover:bg-rose-600 transition-all shadow-xl">Dismiss Protocol</button>
             </div>
-            <div className="mt-auto border-t border-black/5 pt-12">
-               <span className="text-[9px] font-black uppercase tracking-[0.4em] text-black/20 block mb-4">Seoul Muse // Seongsu-dong</span>
-               <p className="serif text-xl italic text-black/40">Redefining the space around the body.</p>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Search Overlay Responsive */}
-      {isSearchActive && (
-        <div className="fixed inset-0 z-[600] bg-white/95 backdrop-blur-3xl animate-in fade-in duration-500 flex flex-col p-6 md:p-20 overflow-hidden">
-          <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
-            <div className="flex justify-between items-center mb-10 md:mb-16">
-              <div className="flex items-center gap-4 md:gap-6">
-                 <Command size={20} className="text-rose-500 md:w-6 md:h-6" />
-                 <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-black/20 italic">Curated Registry / Semantic Search</span>
-              </div>
-              <button 
-                onClick={() => setIsSearchActive(false)}
-                className="p-3 md:p-4 hover:bg-slate-50 rounded-full transition-all group"
-              >
-                <X size={24} strokeWidth={1} className="md:w-8 md:h-8 group-hover:rotate-90 transition-transform duration-500" />
-              </button>
-            </div>
-
-            <div className="relative mb-12 md:mb-20 group">
-              <Search size={24} strokeWidth={1.5} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-black/10 group-focus-within:text-rose-500 transition-colors md:w-8 md:h-8" />
-              <input 
-                ref={overlaySearchInputRef}
-                type="text"
-                placeholder="AESTHETIC QUERY"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-14 md:pl-24 pr-4 md:pr-10 py-6 md:py-10 bg-transparent border-b border-black/5 focus:border-rose-500 outline-none text-2xl md:text-5xl lg:text-6xl font-black uppercase tracking-tighter placeholder:text-black/5 transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-20 flex-1 overflow-y-auto no-scrollbar">
-              <div className="lg:col-span-4 space-y-8 md:space-y-12">
-                <div className="p-8 md:p-12 bg-black text-white rounded-[40px] md:rounded-[60px] shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-3xl pointer-events-none" />
-                  <div className="flex items-center gap-4 mb-6 md:mb-8">
-                    <Sparkles size={16} className="text-rose-500 md:w-5 md:h-5" />
-                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Muse Stylist Insight</span>
-                  </div>
-                  <div className="min-h-[100px] md:min-h-[140px] flex flex-col justify-center">
-                    {isAiCurating ? (
-                      <div className="flex items-center gap-4 text-white/30 italic text-sm">
-                        <Loader2 size={14} className="animate-spin" />
-                        Analyzing...
-                      </div>
-                    ) : (
-                      <p className="serif text-lg md:text-2xl italic leading-relaxed text-white/90">
-                        {aiSearchInsight || (searchQuery ? "Our AI is curating..." : "What is the mood of your archive today?")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4 md:space-y-6">
-                   <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-black/20">Trending Moods</h4>
-                   <div className="flex flex-wrap gap-2 md:gap-3">
-                      {['Seongsu Industrial', 'Cheongdam Chic', 'Minimalist', 'Silk Draping'].map(mood => (
-                        <button 
-                          key={mood}
-                          onClick={() => setSearchQuery(mood)}
-                          className="px-4 md:px-6 py-2 md:py-3 rounded-full border border-black/5 hover:border-rose-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all hover:bg-rose-50"
-                        >
-                          {mood}
-                        </button>
-                      ))}
-                   </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-8 pb-40">
-                {searchResults.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
-                    {searchResults.map((p, idx) => (
-                      <div 
-                        key={p.id} 
-                        onClick={() => { addToCart(p); setIsSearchActive(false); }}
-                        className="flex gap-6 md:gap-8 items-center bg-slate-50/50 p-4 md:p-6 rounded-[30px] md:rounded-[40px] hover:bg-white hover:shadow-2xl transition-all border border-transparent hover:border-rose-100 group cursor-pointer animate-in fade-in slide-in-from-bottom-8 fill-mode-forwards"
-                        style={{ animationDelay: `${idx * 50}ms` }}
-                      >
-                        <div className="w-20 h-28 md:w-24 md:h-32 rounded-[18px] md:rounded-[24px] overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 shadow-md shrink-0">
-                          <img src={p.image} className="w-full h-full object-cover" alt={p.name} onError={handleImageError} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest block mb-1">{p.category}</span>
-                          <h4 className="serif text-xl md:text-3xl italic leading-tight mb-2 truncate group-hover:text-rose-600 transition-colors">{p.name}</h4>
-                          <div className="flex items-center justify-between">
-                            <span className="text-lg font-bold tracking-tighter opacity-30">$ {p.price}</span>
-                            <ArrowRight size={16} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-full py-20 flex flex-col items-center justify-center text-center opacity-10">
-                    <Search size={80} strokeWidth={0.5} className="mb-6 md:w-32 md:h-32" />
-                    <p className="serif text-2xl md:text-4xl italic">Archive empty.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Editorial Navigation Responsive */}
+      {/* Navigation */}
       <nav className="fixed top-0 w-full z-[100] h-20 md:h-28 flex items-center px-6 md:px-20 justify-between bg-white/60 backdrop-blur-xl border-b border-black/[0.02]">
-        <div className="flex items-center gap-12 md:gap-20">
-            <div className="flex flex-col group cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-                <span className="serif text-2xl md:text-4xl font-bold tracking-tighter leading-none">Seoul Muse</span>
-            </div>
-            <div className="hidden lg:flex items-center gap-14 uppercase text-[10px] font-black tracking-[0.4em] text-black/30">
-                <button onClick={onNavigateToCatalog} className="hover:text-rose-500 transition-colors uppercase">The Archives</button>
-                <button onClick={onNavigateToManifesto} className="hover:text-rose-500 transition-colors uppercase">Manifesto</button>
-                <button onClick={onNavigateToLab} className="hover:text-rose-500 transition-colors uppercase">Lab</button>
-            </div>
+        <div className="flex items-center gap-12">
+            <button className="flex flex-col group text-left" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+                <span className="serif text-2xl md:text-3xl font-bold tracking-tighter leading-none">Seoul Muse</span>
+                <span className="text-[7px] font-black tracking-[0.6em] text-black/20 mt-1 uppercase">Atelier Archive</span>
+            </button>
         </div>
-        <div className="flex items-center gap-4 sm:gap-6 md:gap-10">
-            <div 
-              onClick={openSearch}
-              className="hidden sm:flex items-center gap-4 px-6 py-2 rounded-full border border-black/[0.03] bg-black/[0.02] cursor-pointer hover:bg-white hover:shadow-sm transition-all w-48"
-            >
-                <Search size={16} strokeWidth={2} className="text-black/20" />
-                <span className="text-[10px] font-black tracking-[0.2em] text-black/20">SEARCH</span>
-            </div>
-            <div className="sm:hidden cursor-pointer p-2" onClick={openSearch}>
-                <Search size={22} strokeWidth={1.2} />
-            </div>
-            <div className="relative cursor-pointer group p-2" onClick={() => setIsCartOpen(true)}>
-                <ShoppingBag size={22} strokeWidth={1.2} className="group-hover:text-rose-600 transition-colors" />
-                {cart.length > 0 && (
-                    <span className="absolute top-1 right-1 bg-rose-600 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full">
-                        {cart.length}
-                    </span>
-                )}
-            </div>
-            {/* Working Sandwich Button */}
-            <Menu 
-              className="lg:hidden cursor-pointer hover:text-rose-600 transition-colors" 
-              size={22} 
-              strokeWidth={1.2} 
-              onClick={() => setIsMobileMenuOpen(true)}
-            />
+        <div className="flex items-center gap-6">
+            {currentCustomer ? (
+              <button onClick={onCustomerLogout} className="flex flex-col items-end group">
+                <span className="text-[8px] font-black uppercase tracking-widest text-black/20 group-hover:text-rose-500 transition-colors italic">Sign Out Protocol</span>
+                <span className="serif text-sm italic font-bold tracking-tighter text-black/80">{currentCustomer.name}</span>
+              </button>
+            ) : (
+              <button onClick={() => setIsAuthOpen(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-all">
+                <User size={16} strokeWidth={1.5} /> Identify
+              </button>
+            )}
+            <button onClick={() => setIsSearchActive(true)} className="p-2 hover:text-rose-600 transition-colors"><Search size={22} strokeWidth={1.2} /></button>
+            <button className="relative group p-2" onClick={() => { setIsCartOpen(true); setCheckoutStep('cart'); }}>
+                <ShoppingBag size={22} strokeWidth={1.2} />
+                {cart.length > 0 && <span className="absolute top-1 right-1 bg-rose-600 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full">{cart.length}</span>}
+            </button>
         </div>
       </nav>
 
-      {/* Hero Section Responsive */}
-      <section className="relative min-h-screen flex items-center px-6 md:px-20 pt-32 pb-20 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] text-[10rem] sm:text-[15rem] md:text-[35rem] font-bold serif leading-none select-none pointer-events-none z-0">
-          MUSE
+      {/* Hero Section - Redesigned with Multi-Layered Animation */}
+      <section className="relative h-screen flex items-center px-6 md:px-20 overflow-hidden bg-[#fdfcfb]">
+        <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] text-[20rem] md:text-[35rem] font-bold serif pointer-events-none select-none"
+            style={{ transform: `translate(-50%, -50%) translateY(${scrollY * 0.1}px)` }}
+        >
+            MUSE
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16 items-center w-full relative z-10">
-            <div className="lg:col-span-5 flex flex-col items-start stagger-in">
-                <div className="flex items-center gap-4 mb-8 md:mb-12">
-                    <span className="h-[1px] w-8 md:w-14 bg-rose-500" />
-                    <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] text-rose-500">Collection No. 04</span>
-                </div>
-                <h1 className="serif text-5xl sm:text-6xl md:text-[9.5rem] leading-[0.9] sm:leading-[0.85] mb-10 md:mb-14">
-                    <span className="font-light italic tracking-tight block">Seoul</span>
-                    <span className="font-bold tracking-tighter block mt-4 md:mt-6">Metamorphosis</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center w-full relative z-10">
+            <div className="lg:col-span-6 flex flex-col items-start stagger-in">
+                <span className="text-[10px] font-black uppercase tracking-[0.6em] text-rose-500 mb-8 italic flex items-center gap-4">
+                  <div className="w-12 h-[1px] bg-rose-500/30" />
+                  Registry 04 // Spring
+                </span>
+                <h1 className="serif text-6xl md:text-[11rem] leading-[0.85] font-bold tracking-tighter mb-12">
+                   <span className="font-light italic block opacity-90 transition-transform duration-1000" style={{ transform: `translateX(${scrollY * -0.05}px)` }}>Seoul</span> 
+                   Metamorphosis
                 </h1>
-                <p className="max-w-md text-black/40 font-medium leading-relaxed mb-12 md:mb-20 text-base sm:text-lg md:text-xl italic serif">
-                  An exploration of industrial structure and soft draping. Designed in Seongsu-dong.
+                <p className="max-w-md text-black/40 text-xl italic serif leading-relaxed mb-16">
+                   An exploration of structural minimalism and classic editorial drapes. Curated in the industrial heart of Seongsu-dong for the contemporary Muse.
                 </p>
-                <button 
-                  onClick={onNavigateToCatalog}
-                  className="w-full sm:w-auto bg-black text-white px-10 md:px-16 py-6 md:py-8 rounded-full font-black uppercase text-[10px] md:text-[11px] tracking-[0.4em] hover:bg-rose-600 transition-all flex items-center justify-center gap-6 md:gap-10 group shadow-2xl"
-                >
-                    Explore Exhibit <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                </button>
+                <div className="flex flex-col sm:flex-row gap-6">
+                  <button onClick={onNavigateToCatalog} className="bg-black text-white px-16 py-8 rounded-full font-black uppercase text-[11px] tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center gap-10 shadow-2xl group">
+                    Examine Archives <ArrowUpRight size={20} className="group-hover:rotate-45 transition-transform" />
+                  </button>
+                </div>
             </div>
-
-            <div className="lg:col-span-7 relative flex items-center justify-center lg:justify-end">
-                <div className="relative aspect-[4/5] w-full max-w-[500px] lg:max-w-[640px] rounded-[60px] sm:rounded-[100px] md:rounded-[180px] overflow-hidden shadow-2xl border-[4px] md:border-[6px] border-white group">
+            
+            <div className="lg:col-span-6 hidden lg:flex justify-end stagger-in relative">
+                {/* Secondary Background Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-rose-500/5 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                
+                {/* Main Hero Asset */}
+                <div 
+                  className="relative aspect-[4/5] w-full max-w-[550px] rounded-[280px] overflow-hidden shadow-[0_80px_160px_rgba(0,0,0,0.15)] border-[12px] border-white transition-all duration-[2s] group"
+                  style={{ transform: `translateY(${scrollY * -0.08}px)` }}
+                >
                     <img 
-                        src="https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=2000&auto=format&fit=crop" 
-                        alt="Editorial Visual"
-                        onError={handleImageError}
-                        className="w-full h-full object-cover transition-transform duration-[6s] group-hover:scale-110 ease-out"
+                      src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=2000&auto=format&fit=crop" 
+                      className="w-full h-full object-cover grayscale brightness-105 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[3s] ease-out" 
+                      alt="The Seoul Muse Hero" 
+                    />
+                    
+                    {/* Floating Tech Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-full text-center px-12 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white">Structural Synthesis // v.04</span>
+                    </div>
+                </div>
+
+                {/* Orbiting Detail Asset 1: Fabric Macro */}
+                <div 
+                  className="absolute -top-10 -left-10 w-48 h-48 rounded-[60px] overflow-hidden border-8 border-white shadow-2xl animate-float"
+                  style={{ transform: `translateY(${scrollY * 0.12}px)` }}
+                >
+                    <img 
+                      src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=800&auto=format&fit=crop" 
+                      className="w-full h-full object-cover grayscale" 
+                      alt="Detail"
                     />
                 </div>
+
+                {/* Orbiting Detail Asset 2: Label/Badge */}
+                <div 
+                  className="absolute bottom-20 -right-12 bg-white p-8 rounded-[40px] shadow-2xl flex flex-col items-center gap-4 animate-float"
+                  style={{ animationDelay: '1.5s', transform: `translateY(${scrollY * -0.15}px)` }}
+                >
+                    <div className="w-12 h-12 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-lg rotate-12">
+                      <Hexagon size={24} strokeWidth={1.5} className="animate-spin-slow" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-black/20 block">Authentic</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-black">Registry Verified</span>
+                    </div>
+                </div>
             </div>
         </div>
-      </section>
-
-      {/* Featured Grid Responsive */}
-      <section className="px-6 md:px-20 py-16 md:py-24 bg-white">
-        <div className="mb-16 md:mb-48">
-            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.6em] text-rose-500 block mb-6 italic">Artifact Highlights</span>
-            <h2 className="serif text-4xl sm:text-6xl md:text-[11rem] italic leading-tight sm:leading-none overflow-hidden">
-               <span className="block hover:translate-x-6 transition-transform duration-1000">Current</span>
-               <span className="font-bold not-italic tracking-tighter block ml-4 sm:ml-60">Artifacts</span>
-            </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-16 md:gap-y-72 gap-x-16">
-            {products.slice(0, 4).map((product, idx) => {
-                const isLeft = idx % 2 === 0;
-                return (
-                    <div key={product.id} className={`group relative flex flex-col ${isLeft ? 'items-start' : 'items-end md:mt-32'}`}>
-                        <div className="relative aspect-[3/4] w-full max-w-xl rounded-[40px] sm:rounded-[60px] md:rounded-[120px] overflow-hidden shadow-xl bg-[#F9F8F6] border border-black/[0.03] flex items-center justify-center">
-                            <img 
-                                src={product.image} 
-                                alt={product.name} 
-                                onError={handleImageError}
-                                className={`w-full h-full object-cover transition-all duration-[3s] ${product.stock <= 0 ? 'grayscale opacity-50' : ''}`}
-                            />
-                            <div className="absolute inset-x-6 md:inset-x-12 bottom-6 md:bottom-12 md:translate-y-10 md:opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-1000">
-                                <button 
-                                    onClick={() => addToCart(product)}
-                                    className="w-full bg-white text-black py-4 sm:py-6 md:py-8 rounded-full font-black uppercase tracking-[0.4em] md:tracking-[0.5em] text-[10px] md:text-[11px] hover:bg-rose-600 hover:text-white transition-all shadow-3xl"
-                                >
-                                    Acquire — ${product.price}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className={`mt-8 md:mt-10 px-4 w-full max-w-lg ${!isLeft ? 'text-right' : ''}`}>
-                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-rose-500 italic block mb-2">{product.category}</span>
-                            <h3 className="serif text-3xl sm:text-4xl md:text-6xl font-light italic leading-none group-hover:text-rose-600 transition-colors duration-700">
-                                {product.name}
-                            </h3>
-                        </div>
-                    </div>
-                );
-            })}
+        
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-20 animate-bounce cursor-pointer" onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
+            <span className="text-[9px] font-black uppercase tracking-[0.5em]">Explore the Matrix</span>
+            <ArrowDown size={14} />
         </div>
       </section>
 
-      {/* Cart Drawer Responsive */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-[700] flex justify-end">
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-md transition-opacity duration-1000" onClick={() => setIsCartOpen(false)} />
-            <div className="relative w-full max-w-xl bg-white h-full shadow-3xl p-6 sm:p-8 md:p-28 flex flex-col animate-in slide-in-from-right duration-700">
-                <div className="flex justify-between items-center mb-8 sm:mb-16 md:mb-32">
-                    <h2 className="serif text-4xl sm:text-5xl md:text-7xl italic leading-none">Your <br/><span className="font-bold not-italic tracking-tighter text-rose-600">Collection</span></h2>
-                    <button onClick={() => setIsCartOpen(false)} className="group p-2 sm:p-3 md:p-5 rounded-full border border-black/5 hover:border-rose-500 transition-all">
-                        <X size={24} className="md:w-9 md:h-9" strokeWidth={1} />
-                    </button>
+      {/* Dynamic Marquee: Aesthetic Frequency */}
+      <div className="bg-black py-6 overflow-hidden border-y border-white/5">
+        <div className="flex gap-20 animate-marquee whitespace-nowrap">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="flex gap-20 items-center">
+              <span className="text-[10px] font-black uppercase tracking-[1em] text-white/30">Registry Syncing...</span>
+              <span className="serif text-2xl italic font-bold text-rose-500">Structural Minimalism</span>
+              <span className="text-[10px] font-black uppercase tracking-[1em] text-white/30">04:00 AM Seongsu Time</span>
+              <span className="serif text-2xl italic font-bold text-white">Classic Draping</span>
+              <span className="text-[10px] font-black uppercase tracking-[1em] text-white/30">Industrial Seoul Grit</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Exploration Matrix Section */}
+      <section className="px-6 md:px-20 py-40 bg-white">
+        <div className="max-w-7xl mx-auto space-y-32">
+          <div className="text-center max-w-3xl mx-auto">
+             <span className="text-[10px] font-black uppercase tracking-[0.6em] text-black/20 block mb-8">Pillars of the Atelier</span>
+             <h2 className="serif text-5xl md:text-8xl italic font-light tracking-tighter leading-none mb-10">Discover Our <span className="not-italic font-bold">World.</span></h2>
+             <div className="h-[1px] w-20 bg-rose-500 mx-auto" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Archive Link */}
+            <div 
+              onClick={onNavigateToCatalog}
+              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
+            >
+               <img 
+                src="https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop" 
+                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
+                alt="Archive"
+               />
+               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
+                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">Registry 0.4</span>
+                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Archives</h3>
+                  <p className="text-white/50 text-base italic serif leading-relaxed mb-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 max-w-[280px]">
+                    Examine the structural silhouettes and artisanal drapes of our contemporary seasonal archive.
+                  </p>
+                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
+                    <ArrowUpRight size={20} />
+                  </div>
+               </div>
+            </div>
+
+            {/* Manifesto Link */}
+            <div 
+              onClick={onNavigateToManifesto}
+              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
+            >
+               <img 
+                src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200&auto=format&fit=crop" 
+                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
+                alt="Manifesto"
+               />
+               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
+                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">The Protocol</span>
+                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Manifesto</h3>
+                  <p className="text-white/50 text-base italic serif leading-relaxed mb-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 max-w-[280px]">
+                    Understanding the core axioms of Seoul Muse: Simplicity, Intention, and Reliability.
+                  </p>
+                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
+                    <ArrowUpRight size={20} />
+                  </div>
+               </div>
+            </div>
+
+            {/* Lab Link */}
+            <div 
+              onClick={onNavigateToLab}
+              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
+            >
+               <img 
+                src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop" 
+                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
+                alt="Lab"
+               />
+               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
+                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">Neural Core</span>
+                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Synthesis Lab</h3>
+                  <p className="text-white/50 text-base italic serif leading-relaxed mb-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 max-w-[280px]">
+                    Experiment with AI-driven aesthetic synthesis and experimental form generation.
+                  </p>
+                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
+                    <ArrowUpRight size={20} />
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* New Section: The Seongsu Protocol (District Insight) */}
+      <section className="relative bg-[#0A0A0A] py-60 overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-rose-600/5 blur-[150px] opacity-30" />
+        <div className="max-w-7xl mx-auto px-6 flex flex-col lg:flex-row items-center gap-24 relative z-10">
+          <div className="lg:w-1/2 space-y-12">
+            <div className="inline-flex items-center gap-6 px-6 py-2 rounded-full border border-white/10 bg-white/5">
+              <MapPin size={14} className="text-rose-500" />
+              <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/60">Seongsu District Terminal</span>
+            </div>
+            <h2 className="serif text-6xl md:text-9xl italic font-light text-white leading-[0.85]">The <br/><span className="not-italic font-bold">Industrial</span> <br/>Soul.</h2>
+            <p className="text-white/40 text-xl md:text-2xl serif italic leading-relaxed max-w-lg">
+              Born amidst the concrete galleries and repurposed factories of Seoul's creative core. We capture the grit and the grace.
+            </p>
+            <div className="grid grid-cols-2 gap-8 pt-10 border-t border-white/10">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 text-rose-500">
+                  <History size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Est. 2026</span>
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-8 sm:space-y-12 md:space-y-20 no-scrollbar">
+                <p className="text-[11px] text-white/20 uppercase tracking-widest leading-loose">Built on the foundations of architectural legacy.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 text-rose-500">
+                  <Globe size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Local Core</span>
+                </div>
+                <p className="text-[11px] text-white/20 uppercase tracking-widest leading-loose">Sourced and synthesized in the heart of the city.</p>
+              </div>
+            </div>
+          </div>
+          <div className="lg:w-1/2">
+            <div className="relative aspect-square w-full rounded-[100px] overflow-hidden border border-white/5 group">
+              <img 
+                src="https://images.unsplash.com/photo-1485230895905-ec40ba36b9bc?q=80&w=1200&auto=format&fit=crop" 
+                className="w-full h-full object-cover grayscale opacity-60 group-hover:scale-105 transition-transform duration-[2s]" 
+                alt="Classic Muse Portrait"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="w-24 h-24 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white animate-pulse">
+                    <History size={32} strokeWidth={1} />
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cart Drawer Enhanced */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-[1000] flex justify-end">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsCartOpen(false)} />
+            <div className="relative w-full max-w-xl bg-white h-full shadow-3xl p-10 md:p-24 flex flex-col animate-in slide-in-from-right duration-700">
+                <div className="flex justify-between items-center mb-20">
+                    <div>
+                        <h2 className="serif text-6xl italic leading-none">The <span className="font-bold not-italic text-rose-600">Collection</span></h2>
+                    </div>
+                    <button onClick={() => setIsCartOpen(false)} className="p-5 rounded-full border border-slate-50 hover:bg-slate-50"><X size={28} strokeWidth={1} /></button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-12 no-scrollbar pr-2">
                     {cart.map((item) => (
-                        <div key={item.cartId} className="flex gap-4 sm:gap-6 md:gap-12 items-center group animate-in slide-in-from-bottom-6">
-                            <div className="w-16 h-24 sm:w-20 sm:h-28 md:w-32 md:h-44 rounded-[20px] sm:rounded-[30px] md:rounded-[50px] overflow-hidden shadow-2xl grayscale group-hover:grayscale-0 transition-all">
-                                <img src={item.image} className="w-full h-full object-cover" alt={item.name} onError={handleImageError} />
-                            </div>
+                        <div key={item.cartId} className="flex gap-10 items-center group">
+                            <img src={item.image} className="w-24 h-32 rounded-[30px] object-cover grayscale group-hover:grayscale-0 transition-all shadow-lg" alt={item.name} />
                             <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start mb-1 sm:mb-2">
-                                    <h4 className="font-black text-[9px] sm:text-[10px] uppercase tracking-[0.3em] opacity-30 truncate">{item.name}</h4>
-                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 p-1"><X size={14}/></button>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-30 truncate">{item.name}</h4>
+                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 hover:scale-125 transition-transform"><X size={14}/></button>
                                 </div>
-                                <p className="serif text-xl sm:text-2xl md:text-4xl italic text-rose-600">${item.price}</p>
+                                <p className="serif text-3xl italic text-rose-600">${item.price}</p>
                             </div>
                         </div>
                     ))}
-                    {cart.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center opacity-10 italic grayscale text-center">
-                            <ShoppingBag size={80} strokeWidth={0.3} className="mb-8" />
-                            <p className="serif text-2xl sm:text-3xl">Archive Empty.</p>
-                        </div>
-                    )}
+                    {cart.length === 0 && <div className="text-center italic serif text-2xl text-black/10 py-20">Archive Empty.</div>}
                 </div>
-                <div className="pt-8 md:pt-24 mt-4 sm:mt-8 border-t border-black/[0.04]">
-                    <div className="flex justify-between items-center mb-6 sm:mb-10 md:mb-20">
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
-                        <span className="serif text-3xl sm:text-4xl md:text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
+
+                <div className="pt-12 mt-8 border-t border-slate-100">
+                    <div className="flex justify-between items-baseline mb-12">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
+                        <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
                     </div>
                     <button 
-                        onClick={handleCheckout}
-                        disabled={cart.length === 0 || isProcessingCheckout}
-                        className="w-full bg-black text-white py-5 sm:py-6 md:py-10 rounded-full font-black text-[10px] sm:text-[11px] uppercase tracking-[0.5em] hover:bg-rose-600 transition-all shadow-3xl flex items-center justify-center gap-4 disabled:bg-slate-300"
+                      onClick={handleCheckoutInitiate} 
+                      disabled={cart.length === 0 || isProcessingCheckout} 
+                      className="w-full bg-black text-white py-8 rounded-full font-black text-[11px] uppercase tracking-[0.5em] hover:bg-rose-600 transition-all shadow-xl disabled:bg-slate-200 flex items-center justify-center gap-4"
                     >
-                        {isProcessingCheckout && <Loader2 className="animate-spin" size={18} />}
-                        {isProcessingCheckout ? 'Fulfilling...' : 'Acquire Collection'}
+                      {isProcessingCheckout ? <Loader2 className="animate-spin" /> : (currentCustomer ? 'Proceed to Acquisition' : 'Identify to Proceed')}
                     </button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* Editorial Footer */}
-      <Footer 
-        onNavigateToCatalog={onNavigateToCatalog} 
-        onNavigateToManifesto={onNavigateToManifesto} 
-        onNavigateToLab={onNavigateToLab} 
-      />
+      <Footer onNavigateToCatalog={onNavigateToCatalog} onNavigateToManifesto={onNavigateToManifesto} onNavigateToLab={onNavigateToLab} />
     </div>
   );
 };

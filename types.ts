@@ -74,6 +74,7 @@ export interface Customer {
   id: string;
   name: string;
   email: string;
+  password?: string; // Secure field for protocol
   totalOrders: number;
   totalSpent: number;
   status: 'Active' | 'Blocked';

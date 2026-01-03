@@ -2,12 +2,78 @@
 import { ProductStatus, OrderStatus, Role, Product, Order, Customer, Coupon } from './types';
 
 export const MOCK_PRODUCTS: Product[] = [
-  { id: 'g1', name: 'Petal Ribbon Silk Blouse', sku: 'SM-001', price: 42.00, stock: 45, status: ProductStatus.ACTIVE, category: 'Tops', collection: 'Seongsu Edit', socialHeat: 98, image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200' },
-  { id: 'g2', name: 'Hongdae Tennis Mini Skirt', sku: 'SM-002', price: 35.00, stock: 120, status: ProductStatus.ACTIVE, category: 'Skirts', collection: 'Seoul Metamorphosis', socialHeat: 85, image: 'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&q=80&w=1200' },
-  { id: 'g3', name: 'Vintage Tweed Set - Ivory', sku: 'SM-003', price: 125.00, stock: 18, status: ProductStatus.ACTIVE, category: 'Co-ords', collection: 'Collection 04', socialHeat: 92, image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&q=80&w=1200' },
-  { id: 'g4', name: 'Lace-Up Romantic Midi', sku: 'SM-004', price: 89.00, stock: 25, status: ProductStatus.ACTIVE, category: 'Dresses', collection: 'Seongsu Edit', socialHeat: 76, image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=1200' },
-  { id: 'g5', name: 'Seongsu Oversized Knit', sku: 'SM-005', price: 58.00, stock: 60, status: ProductStatus.ACTIVE, category: 'Tops', collection: 'Seoul Metamorphosis', socialHeat: 89, image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&q=80&w=1200' },
-  { id: 'g6', name: 'Moonlight Satin Slip', sku: 'SM-006', price: 65.00, stock: 12, status: ProductStatus.ACTIVE, category: 'Dresses', collection: 'Collection 04', socialHeat: 95, image: 'https://images.unsplash.com/photo-1502716119720-b23a93e5fe1b?auto=format&fit=crop&q=80&w=1200' },
+  { 
+    id: 'g1', 
+    name: 'Petal Ribbon Silk Blouse', 
+    sku: 'SM-001', 
+    price: 42.00, 
+    stock: 45, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Tops', 
+    collection: 'Seongsu Edit', 
+    socialHeat: 98, 
+    image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=1200&auto=format&fit=crop' 
+  },
+  { 
+    id: 'g2', 
+    name: 'Metamorphic Trench Coat', 
+    sku: 'SM-002', 
+    price: 185.00, 
+    stock: 120, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Outerwear', 
+    collection: 'Seoul Metamorphosis', 
+    socialHeat: 85, 
+    image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop' 
+  },
+  { 
+    id: 'g3', 
+    name: 'Vintage Tweed Set - Ivory', 
+    sku: 'SM-003', 
+    price: 125.00, 
+    stock: 18, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Co-ords', 
+    collection: 'Collection 04', 
+    socialHeat: 92, 
+    image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200&auto=format&fit=crop' 
+  },
+  { 
+    id: 'g4', 
+    name: 'Architectural Midi Dress', 
+    sku: 'SM-004', 
+    price: 89.00, 
+    stock: 25, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Dresses', 
+    collection: 'Seongsu Edit', 
+    socialHeat: 76, 
+    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200&auto=format&fit=crop' 
+  },
+  { 
+    id: 'g5', 
+    name: 'Seongsu Oversized Knit', 
+    sku: 'SM-005', 
+    price: 58.00, 
+    stock: 60, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Tops', 
+    collection: 'Seoul Metamorphosis', 
+    socialHeat: 89, 
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200&auto=format&fit=crop' 
+  },
+  { 
+    id: 'g6', 
+    name: 'Midnight Silk Evening Gown', 
+    sku: 'SM-006', 
+    price: 265.00, 
+    stock: 12, 
+    status: ProductStatus.ACTIVE, 
+    category: 'Dresses', 
+    collection: 'Collection 04', 
+    socialHeat: 95, 
+    image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?q=80&w=1200&auto=format&fit=crop' 
+  },
 ];
 
 export const MOCK_ORDERS: Order[] = [
