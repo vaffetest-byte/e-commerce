@@ -58,6 +58,13 @@ const Storefront: React.FC<StorefrontProps> = ({
 
   useEffect(() => { localStorage.setItem('seoul_muse_cart', JSON.stringify(cart)); }, [cart]);
 
+  // Focus search input when overlay opens
+  useEffect(() => {
+    if (isSearchActive && overlaySearchInputRef.current) {
+      overlaySearchInputRef.current.focus();
+    }
+  }, [isSearchActive]);
+
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (searchQuery.length > 3) {
@@ -71,7 +78,11 @@ const Storefront: React.FC<StorefrontProps> = ({
 
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
-    return products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    return products.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.collection?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   }, [searchQuery, products]);
 
   const addToCart = (product: Product) => {
@@ -123,6 +134,92 @@ const Storefront: React.FC<StorefrontProps> = ({
           onSuccess={(c) => { onCustomerLogin(c); setIsAuthOpen(false); }} 
           onClose={() => setIsAuthOpen(false)} 
         />
+      )}
+
+      {/* Search Overlay */}
+      {isSearchActive && (
+        <div className="fixed inset-0 z-[1500] flex flex-col bg-white/95 backdrop-blur-3xl animate-in fade-in duration-500">
+          <div className="h-20 md:h-28 px-6 md:px-20 flex items-center justify-between border-b border-black/[0.03]">
+            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-black/20 italic">Universal Registry Search</span>
+            <button onClick={() => { setIsSearchActive(false); setSearchQuery(""); }} className="p-4 rounded-full hover:bg-slate-50 transition-all">
+              <X size={28} strokeWidth={1} />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto no-scrollbar py-12 md:py-24 px-6 md:px-20">
+            <div className="max-w-7xl mx-auto">
+              <div className="relative mb-20">
+                <input 
+                  ref={overlaySearchInputRef}
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="EXAMINE ARCHIVES..."
+                  className="w-full bg-transparent border-none outline-none serif text-5xl md:text-9xl italic font-light tracking-tighter placeholder:text-black/5"
+                />
+                {isAiCurating && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                    <Loader2 className="animate-spin text-rose-500" size={32} />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
+                <div className="lg:col-span-8 space-y-20">
+                  {searchResults.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-20">
+                      {searchResults.map(p => (
+                        <div key={p.id} className="group cursor-pointer" onClick={() => { onNavigateToCatalog(); setIsSearchActive(false); }}>
+                          <div className="aspect-[4/5] bg-slate-50 rounded-[40px] overflow-hidden mb-8 shadow-sm">
+                            <img src={p.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt={p.name} />
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-rose-500 italic">{p.category}</span>
+                            <h4 className="serif text-3xl italic font-bold tracking-tight">{p.name}</h4>
+                            <p className="text-xl font-medium tracking-tighter text-black/30">${p.price.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : searchQuery.length > 0 ? (
+                    <div className="py-20 text-center">
+                      <p className="serif text-4xl italic text-black/20">No matching artifacts detected.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-10">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-black/20">Popular Inquiries</span>
+                      <div className="flex flex-wrap gap-4">
+                        {['Silk Blouse', 'Trench Coat', 'Knits', 'Manifesto'].map(tag => (
+                          <button key={tag} onClick={() => setSearchQuery(tag)} className="px-8 py-4 rounded-full border border-black/5 text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-4 space-y-12">
+                  <div className="bg-slate-50 p-12 rounded-[50px] space-y-8">
+                    <div className="flex items-center gap-4 text-rose-500">
+                      <Sparkles size={18} />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em]">AI Muse Curation</span>
+                    </div>
+                    <p className="serif text-xl italic leading-relaxed text-black/60">
+                      {aiSearchInsight || "Begin typing to receive editorial insights from the Seoul Muse AI core."}
+                    </p>
+                  </div>
+                  <div className="bg-black p-12 rounded-[50px] text-white space-y-6">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">District Insight</span>
+                    <p className="serif text-xl italic font-light leading-relaxed">
+                      "Market signals suggest a resurgence in industrial minimalism across Seongsu Terminal 4."
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Success Modal */}

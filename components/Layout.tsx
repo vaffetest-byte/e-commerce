@@ -39,6 +39,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, onNavigate }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [universalSearch, setUniversalSearch] = useState("");
 
   // Safely filter navigation based on user roles
   const filteredNav = NAVIGATION.filter(item => 
@@ -133,6 +134,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activePath, o
               <Search size={18} className="text-slate-300 group-focus-within:text-rose-500" />
               <input 
                 type="text" 
+                value={universalSearch}
+                onChange={(e) => setUniversalSearch(e.target.value)}
                 placeholder="UNIVERSAL REGISTRY SEARCH..." 
                 className="bg-transparent border-none focus:outline-none w-full text-[10px] font-bold text-slate-900 tracking-widest uppercase placeholder:text-slate-300"
               />
