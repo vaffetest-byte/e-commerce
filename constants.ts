@@ -4,8 +4,8 @@ import { ProductStatus, OrderStatus, Role, Product, Order, Customer, Coupon, Hom
 export const DEFAULT_HOME_CONFIG: HomeConfig = {
   hero: {
     headingPart1: "Seoul",
-    headingPart2: "Aura",
-    subheading: "The intersection of structural minimalism and ethereal editorial grace. Curated for the modern inhabitant of the Seongsu-dong creative district.",
+    headingPart2: "Metamorphosis",
+    subheading: "Where architectural brutalism meets ethereal silk. A curated registry for the discerning inhabitant of the Seongsu-dong creative district.",
     image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=2000&auto=format&fit=crop",
     registryLabel: "Premium Registry // Spring 2026"
   },
