@@ -5,7 +5,7 @@ import {
   Search, ChevronRight, ArrowRight, Command, Globe, 
   Fingerprint, ArrowDown, ShieldCheck, CheckCircle2,
   MapPin, CreditCard, Box, Hash, User, Target, Cpu, BookOpen,
-  History, Layers, Microscope, Dna, Hexagon, Eye
+  History, Layers, Microscope, Dna, Hexagon, Eye, MousePointer2
 } from 'lucide-react';
 import { Product, Customer } from '../types';
 import { getTrendRadar, getSearchCuration } from '../geminiService';
@@ -33,6 +33,7 @@ const Storefront: React.FC<StorefrontProps> = ({
   const [trendAlert, setTrendAlert] = useState<string>("");
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Auth/Search States
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -43,20 +44,54 @@ const Storefront: React.FC<StorefrontProps> = ({
   const overlaySearchInputRef = useRef<HTMLInputElement>(null);
 
   // Checkout States
-  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'payment'>('cart');
   const [acquisitionSuccess, setAcquisitionSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrollY(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: (e.clientX / window.innerWidth) - 0.5, y: (e.clientY / window.innerHeight) - 0.5 });
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove);
+    
     const savedCart = localStorage.getItem('seoul_muse_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
+    
     const fetchTrend = async () => { setTrendAlert(await getTrendRadar()); };
     fetchTrend();
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
-  useEffect(() => { localStorage.setItem('seoul_muse_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { 
+    localStorage.setItem('seoul_muse_cart', JSON.stringify(cart)); 
+  }, [cart]);
+
+  // Intersection Observer for scroll reveal
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('active');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [products]);
 
   // Focus search input when overlay opens
   useEffect(() => {
@@ -78,32 +113,28 @@ const Storefront: React.FC<StorefrontProps> = ({
 
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
+    const q = searchQuery.toLowerCase();
     return products.filter(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.collection?.toLowerCase().includes(searchQuery.toLowerCase())
+      p.name.toLowerCase().includes(q) || 
+      p.category.toLowerCase().includes(q) ||
+      p.collection?.toLowerCase().includes(q)
     );
   }, [searchQuery, products]);
 
   const featuredProducts = useMemo(() => {
-    return products.slice(0, 3);
+    return products.slice(0, 4);
   }, [products]);
 
-  const addToCart = (product: Product) => {
-    if (product.stock <= 0) return;
-    setCart(prev => [...prev, { ...product, cartId: Date.now() }]);
-    setIsCartOpen(true);
-    setCheckoutStep('cart');
+  const removeFromCart = (cartId: number) => { 
+    setCart(prev => prev.filter(item => item.cartId !== cartId)); 
   };
-
-  const removeFromCart = (cartId: number) => { setCart(prev => prev.filter(item => item.cartId !== cartId)); };
 
   const handleCheckoutInitiate = () => {
     if (!currentCustomer) {
       setIsAuthOpen(true);
       return;
     }
-    handleCheckout(); // Direct acquisition if already identified
+    handleCheckout();
   };
 
   const handleCheckout = async () => {
@@ -130,8 +161,10 @@ const Storefront: React.FC<StorefrontProps> = ({
     }
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
-    <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-0 relative">
+    <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-0 relative scroll-container">
       
       {isAuthOpen && (
         <CustomerAuth 
@@ -159,7 +192,7 @@ const Storefront: React.FC<StorefrontProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="EXAMINE ARCHIVES..."
-                  className="w-full bg-transparent border-none outline-none serif text-5xl md:text-9xl italic font-light tracking-tighter placeholder:text-black/5"
+                  className="w-full bg-transparent border-none outline-none serif text-4xl sm:text-5xl md:text-9xl italic font-light tracking-tighter placeholder:text-black/5"
                 />
                 {isAiCurating && (
                   <div className="absolute right-0 top-1/2 -translate-y-1/2">
@@ -175,7 +208,7 @@ const Storefront: React.FC<StorefrontProps> = ({
                       {searchResults.map(p => (
                         <div key={p.id} className="group cursor-pointer" onClick={() => { onNavigateToCatalog(); setIsSearchActive(false); }}>
                           <div className="aspect-[4/5] bg-slate-50 rounded-[40px] overflow-hidden mb-8 shadow-sm">
-                            <img src={p.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt={p.name} />
+                            <img src={p.image} className="w-full h-full object-cover grayscale md:group-hover:grayscale-0 transition-all duration-700 accelerate" alt={p.name} loading="lazy" />
                           </div>
                           <div className="space-y-2">
                             <span className="text-[9px] font-black uppercase tracking-widest text-rose-500 italic">{p.category}</span>
@@ -202,167 +235,209 @@ const Storefront: React.FC<StorefrontProps> = ({
                     </div>
                   )}
                 </div>
-
-                <div className="lg:col-span-4 space-y-12">
-                  <div className="bg-slate-50 p-12 rounded-[50px] space-y-8">
-                    <div className="flex items-center gap-4 text-rose-500">
-                      <Sparkles size={18} />
-                      <span className="text-[10px] font-black uppercase tracking-[0.4em]">AI Muse Curation</span>
-                    </div>
-                    <p className="serif text-xl italic leading-relaxed text-black/60">
-                      {aiSearchInsight || "Begin typing to receive editorial insights from the Seoul Muse AI core."}
-                    </p>
-                  </div>
-                  <div className="bg-black p-12 rounded-[50px] text-white space-y-6">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">District Insight</span>
-                    <p className="serif text-xl italic font-light leading-relaxed">
-                      "Market signals suggest a resurgence in industrial minimalism across Seongsu Terminal 4."
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Success Modal */}
-      {acquisitionSuccess && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl animate-in fade-in duration-1000" onClick={() => setAcquisitionSuccess(null)} />
-            <div className="relative bg-white w-full max-w-2xl rounded-[60px] p-12 sm:p-20 text-center shadow-3xl animate-in zoom-in-95 duration-700">
-                <div className="w-24 h-24 bg-rose-500 rounded-full mx-auto mb-12 flex items-center justify-center text-white shadow-2xl animate-bounce">
-                    <CheckCircle2 size={48} strokeWidth={1} />
-                </div>
-                <h2 className="serif text-6xl md:text-8xl italic font-light tracking-tighter mb-8">Acquisition <span className="font-bold not-italic text-rose-600">Complete.</span></h2>
-                <p className="text-xl serif italic text-black/40 mb-16 leading-relaxed">Recorded for Resident {currentCustomer?.name}. Prepared for dispatch from Seongsu Atelier.</p>
-                <div className="bg-slate-50 p-8 rounded-[30px] border border-slate-100 mb-16 flex items-center justify-between">
-                    <div className="text-left">
-                        <span className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 block mb-1">Acquisition ID</span>
-                        <p className="font-mono text-xs font-black tracking-widest text-rose-600">{acquisitionSuccess}</p>
-                    </div>
-                    <Hash size={24} className="text-black/5" />
-                </div>
-                <button onClick={() => setAcquisitionSuccess(null)} className="w-full bg-black text-white py-8 rounded-full font-black uppercase tracking-[0.6em] text-[11px] hover:bg-rose-600 transition-all shadow-xl">Dismiss Protocol</button>
-            </div>
-        </div>
-      )}
-
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-[100] h-20 md:h-28 flex items-center px-6 md:px-20 justify-between bg-white/60 backdrop-blur-xl border-b border-black/[0.02]">
+      <nav className="fixed top-0 w-full z-[100] h-20 md:h-28 flex items-center px-6 md:px-20 justify-between bg-white/70 backdrop-blur-xl border-b border-black/[0.02] accelerate">
         <div className="flex items-center gap-12">
             <button className="flex flex-col group text-left" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-                <span className="serif text-2xl md:text-3xl font-bold tracking-tighter leading-none">Seoul Muse</span>
-                <span className="text-[7px] font-black tracking-[0.6em] text-black/20 mt-1 uppercase">Atelier Archive</span>
+                <span className="serif text-xl sm:text-3xl font-bold tracking-tighter leading-none">Seoul Muse</span>
+                <span className="text-[7px] font-black tracking-[0.6em] text-black/20 mt-1 uppercase hidden xs:block">Atelier Archive</span>
             </button>
         </div>
-        <div className="flex items-center gap-6">
-            {currentCustomer ? (
-              <button onClick={onCustomerLogout} className="flex flex-col items-end group">
-                <span className="text-[8px] font-black uppercase tracking-widest text-black/20 group-hover:text-rose-500 transition-colors italic">Sign Out Protocol</span>
-                <span className="serif text-sm italic font-bold tracking-tighter text-black/80">{currentCustomer.name}</span>
-              </button>
-            ) : (
-              <button onClick={() => setIsAuthOpen(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-all">
-                <User size={16} strokeWidth={1.5} /> Identify
-              </button>
-            )}
-            <button onClick={() => setIsSearchActive(true)} className="p-2 hover:text-rose-600 transition-colors"><Search size={22} strokeWidth={1.2} /></button>
-            <button className="relative group p-2" onClick={() => { setIsCartOpen(true); setCheckoutStep('cart'); }}>
-                <ShoppingBag size={22} strokeWidth={1.2} />
-                {cart.length > 0 && <span className="absolute top-1 right-1 bg-rose-600 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full">{cart.length}</span>}
-            </button>
+        <div className="flex items-center gap-4 sm:gap-10">
+            <div className="hidden lg:flex items-center gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-black/40">
+                <button onClick={onNavigateToCatalog} className="hover:text-rose-500 transition-colors">Archive</button>
+                <button onClick={onNavigateToManifesto} className="hover:text-rose-500 transition-colors">Manifesto</button>
+                <button onClick={onNavigateToLab} className="hover:text-rose-500 transition-colors">Lab</button>
+            </div>
+            <div className="h-6 w-[1px] bg-black/5 hidden lg:block" />
+            <div className="flex items-center gap-4 sm:gap-6">
+                <button onClick={() => setIsSearchActive(true)} className="p-2 hover:text-rose-600 transition-colors"><Search size={22} strokeWidth={1.2} /></button>
+                <button className="relative group p-2" onClick={() => setIsCartOpen(true)}>
+                    <ShoppingBag size={22} strokeWidth={1.2} />
+                    {cart.length > 0 && <span className="absolute top-1 right-1 bg-rose-600 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full">{cart.length}</span>}
+                </button>
+            </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center px-6 md:px-20 overflow-hidden bg-[#fdfcfb]">
+      {/* Cinematic Hero Section */}
+      <section className="relative min-h-[110vh] flex items-center px-6 md:px-20 overflow-hidden bg-white">
+        {/* Background Parallax Layer */}
         <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] text-[20rem] md:text-[35rem] font-bold serif pointer-events-none select-none"
-            style={{ transform: `translate(-50%, -50%) translateY(${scrollY * 0.1}px)` }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] text-[15rem] sm:text-[40rem] font-bold serif pointer-events-none select-none accelerate leading-none"
+            style={{ transform: `translate3d(calc(-50% + ${mousePos.x * -50}px), calc(-50% + ${scrollY * 0.15}px), 0)` }}
         >
             MUSE
         </div>
+
+        {/* Scan Line HUD Element */}
+        <div className="scan-line" />
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center w-full relative z-10">
-            <div className="lg:col-span-6 flex flex-col items-start stagger-in">
-                <span className="text-[10px] font-black uppercase tracking-[0.6em] text-rose-500 mb-8 italic flex items-center gap-4">
-                  <div className="w-12 h-[1px] bg-rose-500/30" />
-                  Registry 04 // Spring
-                </span>
-                <h1 className="serif text-6xl md:text-[11rem] leading-[0.85] font-bold tracking-tighter mb-12">
-                   <span className="font-light italic block opacity-90 transition-transform duration-1000" style={{ transform: `translateX(${scrollY * -0.05}px)` }}>Seoul</span> 
-                   Metamorphosis
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center w-full relative z-10 py-32">
+            <div className="lg:col-span-7 flex flex-col items-start stagger-in">
+                <div className="inline-flex items-center gap-6 px-6 py-2 rounded-full border border-black/5 bg-slate-50 mb-10">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.5em] text-rose-500 italic">Neural Sync: Active // Terminal 4</span>
+                </div>
+                
+                <h1 className="serif text-6xl sm:text-8xl md:text-[14rem] leading-[0.8] font-bold tracking-tighter mb-12 accelerate">
+                   <span className="font-light italic block opacity-90 transition-transform duration-[2s] ease-out" 
+                    style={{ transform: `translate3d(${scrollY * -0.06}px, 0, 0) rotate(${scrollY * -0.01}deg)` }}>
+                    Structural
+                   </span> 
+                   Elegance.
                 </h1>
-                <p className="max-w-md text-black/40 text-xl italic serif leading-relaxed mb-16">
-                   An exploration of structural minimalism and classic editorial drapes. Curated in the industrial heart of Seongsu-dong for the contemporary Muse.
+
+                <p className="max-w-xl text-black/50 text-xl md:text-3xl italic serif leading-relaxed mb-16 transition-all duration-700">
+                   "A dialogue between the body and the grid." Curated in the industrial center of Seongsu-dong for the digital-native Muse.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <button onClick={onNavigateToCatalog} className="bg-black text-white px-16 py-8 rounded-full font-black uppercase text-[11px] tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center gap-10 shadow-2xl group">
-                    Examine Archives <ArrowUpRight size={20} className="group-hover:rotate-45 transition-transform" />
-                  </button>
+
+                <div className="flex flex-col sm:flex-row gap-8 items-center w-full sm:w-auto">
+                    <button onClick={onNavigateToCatalog} className="w-full sm:w-auto bg-black text-white px-16 py-8 rounded-full font-black uppercase text-[11px] tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center justify-center gap-10 shadow-3xl group relative overflow-hidden">
+                        <span className="relative z-10">Identify Archives</span>
+                        <ArrowUpRight size={20} className="relative z-10 group-hover:rotate-45 transition-transform" />
+                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                    </button>
+                    <div className="flex items-center gap-6 group cursor-pointer" onClick={onNavigateToManifesto}>
+                        <div className="w-12 h-12 rounded-full border border-black/10 flex items-center justify-center group-hover:border-rose-500 transition-colors">
+                            <MousePointer2 size={16} className="group-hover:text-rose-500" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-black/30 group-hover:text-black">The Protocol</span>
+                    </div>
                 </div>
             </div>
             
-            <div className="lg:col-span-6 hidden lg:flex justify-end stagger-in relative">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-rose-500/5 blur-[120px] rounded-full animate-pulse pointer-events-none" />
-                
+            <div className="lg:col-span-5 hidden lg:flex justify-end stagger-in relative">
+                {/* Floating Detail Elements */}
                 <div 
-                  className="relative aspect-[4/5] w-full max-w-[550px] rounded-[280px] overflow-hidden shadow-[0_80px_160px_rgba(0,0,0,0.15)] border-[12px] border-white transition-all duration-[2s] group"
-                  style={{ transform: `translateY(${scrollY * -0.08}px)` }}
+                    className="absolute -top-10 -right-10 w-48 h-48 bg-white p-4 rounded-[60px] shadow-3xl z-20 flex flex-col items-center justify-center animate-float border border-black/5"
+                    style={{ animationDelay: '1s' }}
+                >
+                    <Hexagon size={32} className="text-rose-500 mb-3 animate-spin-slow" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-black/40">Verified</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-black">Registry Entry</span>
+                </div>
+
+                <div 
+                  className="relative aspect-[4/5] w-full max-w-[480px] rounded-[240px] overflow-hidden shadow-[0_100px_200px_rgba(0,0,0,0.1)] border-[1px] border-black/5 transition-all duration-[2.5s] group accelerate"
+                  style={{ transform: `translate3d(calc(${mousePos.x * 30}px), calc(-50px + ${scrollY * -0.1}px), 0)` }}
                 >
                     <img 
                       src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=2000&auto=format&fit=crop" 
                       className="w-full h-full object-cover grayscale brightness-105 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[3s] ease-out" 
-                      alt="The Seoul Muse Hero" 
+                      alt="Hero Look" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                    <div className="absolute bottom-16 left-0 w-full text-center px-12 opacity-0 group-hover:opacity-100 transition-all duration-1000 translate-y-10 group-hover:translate-y-0">
+                      <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white">Spring Matrix // v.04</span>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-20 animate-bounce cursor-pointer" onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
-            <span className="text-[9px] font-black uppercase tracking-[0.5em]">Explore the Matrix</span>
-            <ArrowDown size={14} />
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-6 opacity-30 animate-bounce cursor-pointer group" onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
+            <div className="h-20 w-[1px] bg-black/10 group-hover:bg-rose-500 transition-colors" />
+            <span className="text-[9px] font-black uppercase tracking-[0.6em] rotate-90 origin-left ml-2">Dive</span>
         </div>
       </section>
 
-      {/* Featured Collection Grid - NEW SECTION TO FIX VISIBILITY */}
-      <section className="px-6 md:px-20 py-40 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-end mb-24">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-rose-500 block mb-6 italic">Featured Registry</span>
-              <h2 className="serif text-5xl md:text-8xl italic font-light tracking-tighter leading-none">The <span className="not-italic font-bold">Latest</span></h2>
+      {/* Dynamic Lookbook Section */}
+      <section className="bg-black py-40 sm:py-60 overflow-hidden relative">
+        <div className="absolute inset-0 bg-rose-600/5 blur-[150px] pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto px-6 mb-32 reveal">
+            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-rose-500 mb-8 block italic">District Narrative // Registry Log</span>
+            <h2 className="serif text-6xl md:text-[10rem] italic text-white leading-none tracking-tighter">The <span className="not-italic font-bold text-rose-600">Seongsu</span> Frequency.</h2>
+        </div>
+
+        <div className="flex gap-10 md:gap-20 overflow-x-auto no-scrollbar px-6 md:px-20 pb-20">
+            {[
+                { title: 'Industrial Grit', desc: 'Synthesizing raw concrete with soft silk drapes.', img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200' },
+                { title: 'Digital Silk', desc: 'Minimalist forms defined by shadow and light.', img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200' },
+                { title: 'Atelier Core', desc: 'Architectural silhouettes for the modern inhabitant.', img: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200' }
+            ].map((look, i) => (
+                <div key={i} className="min-w-[320px] md:min-w-[550px] group reveal" style={{ transitionDelay: `${i * 150}ms` }}>
+                    <div className="aspect-[4/5] bg-slate-900 rounded-[80px] overflow-hidden mb-10 border border-white/5 relative">
+                        <img src={look.img} className="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[2s]" alt={look.title} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60" />
+                        <div className="absolute bottom-12 left-12">
+                             <span className="text-[9px] font-black uppercase tracking-[0.4em] text-rose-500 mb-2 block">Protocol // 0{i+1}</span>
+                             <h4 className="serif text-4xl italic text-white font-bold">{look.title}</h4>
+                        </div>
+                    </div>
+                    <p className="text-white/30 text-lg serif italic leading-relaxed max-w-sm px-6">"{look.desc}"</p>
+                </div>
+            ))}
+        </div>
+      </section>
+
+      {/* Aesthetic Marquee Overlay */}
+      <div className="bg-white py-12 border-y border-black/[0.03] overflow-hidden">
+        <div className="flex gap-20 animate-marquee whitespace-nowrap">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex gap-20 items-center">
+              <span className="text-[10px] font-black uppercase tracking-[1em] text-black/10">Registry Archive SYNC</span>
+              <span className="serif text-4xl italic font-bold text-rose-500">Seoul Metamorphosis</span>
+              <span className="text-[10px] font-black uppercase tracking-[1em] text-black/10">Terminal 4 Seongsu</span>
+              <span className="serif text-4xl italic font-bold text-black">Structural Minimalism</span>
             </div>
-            <button onClick={onNavigateToCatalog} className="hidden sm:flex items-center gap-6 text-[11px] font-black uppercase tracking-[0.5em] hover:text-rose-600 transition-colors pb-2 border-b border-black/5">
-              Browse Full Catalog <ArrowRight size={18} />
+          ))}
+        </div>
+      </div>
+
+      {/* Featured Registry Showcase */}
+      <section className="px-6 md:px-20 py-40 sm:py-60 bg-[#fdfcfb]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-32 gap-10 reveal">
+            <div className="max-w-2xl">
+              <span className="text-[10px] font-black uppercase tracking-[0.6em] text-rose-500 block mb-10 italic">High Traffic Artifacts</span>
+              <h2 className="serif text-5xl sm:text-9xl italic font-light tracking-tighter leading-[0.85]">The <br/><span className="not-italic font-bold">Aura</span> Selection.</h2>
+            </div>
+            <button onClick={onNavigateToCatalog} className="px-12 py-6 rounded-full border border-black/10 text-[11px] font-black uppercase tracking-[0.5em] hover:bg-black hover:text-white transition-all group">
+              Browse Full Catalog <ArrowRight size={18} className="inline ml-6 group-hover:translate-x-2 transition-transform" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-24">
             {featuredProducts.map((p, idx) => (
               <div 
                 key={p.id} 
-                className={`group cursor-pointer stagger-in`}
+                className={`group cursor-pointer reveal stagger-in relative`}
                 style={{ animationDelay: `${idx * 150}ms` }}
                 onClick={onNavigateToCatalog}
               >
-                <div className="aspect-[4/5] bg-slate-50 rounded-[2px] overflow-hidden mb-8 shadow-sm relative">
-                  <img src={p.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-[1.5s]" alt={p.name} />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                    <div className="bg-white/90 backdrop-blur-md px-8 py-4 rounded-full flex items-center gap-3">
-                      <Eye size={14} className="text-rose-500" />
-                      <span className="text-[9px] font-black uppercase tracking-widest">Observe</span>
+                {/* Visual Artifact */}
+                <div className="aspect-[4/5] bg-slate-100 rounded-[2px] overflow-hidden mb-10 shadow-sm relative accelerate">
+                  <img src={p.image} className="w-full h-full object-cover grayscale md:group-hover:grayscale-0 md:group-hover:scale-105 transition-all duration-[1.5s]" alt={p.name} loading="lazy" />
+                  
+                  {/* Heat Indication Overlay */}
+                  <div className="absolute top-6 left-6 flex items-center gap-3">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-white drop-shadow-lg">Aura: {p.socialHeat || 90}+</span>
+                  </div>
+
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-all duration-700 bg-white/10 backdrop-blur-sm">
+                    <div className="bg-black text-white px-8 py-4 rounded-full flex items-center gap-3 shadow-3xl">
+                      <Eye size={14} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">Examine</span>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4">
+
+                {/* Narrative Data */}
+                <div className="space-y-4 px-2">
                   <div className="flex justify-between items-baseline">
                     <span className="text-[9px] font-black uppercase tracking-widest text-black/20 italic">{p.collection}</span>
-                    <span className="text-xl font-medium tracking-tighter text-black/30">${p.price.toFixed(2)}</span>
+                    <span className="text-xl font-medium tracking-tighter text-rose-500">${p.price.toFixed(2)}</span>
                   </div>
-                  <h4 className="serif text-3xl italic font-bold tracking-tight">{p.name}</h4>
+                  <h4 className="serif text-3xl italic font-bold tracking-tight text-slate-800 leading-none">{p.name}</h4>
+                  <div className="h-[1px] w-full bg-black/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-700" />
                 </div>
               </div>
             ))}
@@ -370,118 +445,84 @@ const Storefront: React.FC<StorefrontProps> = ({
         </div>
       </section>
 
-      {/* Exploration Matrix Section */}
-      <section className="px-6 md:px-20 py-40 bg-slate-50/50">
-        <div className="max-w-7xl mx-auto space-y-32">
-          <div className="text-center max-w-3xl mx-auto">
-             <span className="text-[10px] font-black uppercase tracking-[0.6em] text-black/20 block mb-8">Pillars of the Atelier</span>
-             <h2 className="serif text-5xl md:text-8xl italic font-light tracking-tighter leading-none mb-10">Discover Our <span className="not-italic font-bold">World.</span></h2>
-             <div className="h-[1px] w-20 bg-rose-500 mx-auto" />
+      {/* Synthesis Call: The Matrix Lab */}
+      <section className="relative px-6 md:px-20 py-60 bg-[#050505] overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-full bg-rose-600/5 blur-[200px] pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto flex flex-col xl:flex-row items-center gap-24 relative z-10">
+          <div className="xl:w-3/5 space-y-16 reveal">
+            <div className="inline-flex items-center gap-6 px-8 py-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl">
+              <Cpu size={18} className="text-rose-500" />
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60">Neural Core Synthesis // Alpha</span>
+            </div>
+            
+            <h2 className="serif text-6xl md:text-[12rem] italic text-white leading-[0.8] tracking-tighter">
+                Dream in <br/><span className="not-italic font-bold text-rose-600">Digital.</span>
+            </h2>
+
+            <p className="text-white/30 text-xl md:text-3xl serif italic leading-relaxed max-w-2xl">
+                Collaborate with our AI core to synthesize experimental aesthetic configurations. Push the boundaries of the Seongsu Protocol.
+            </p>
+
+            <button onClick={onNavigateToLab} className="group flex items-center gap-10 text-white/50 hover:text-white transition-all">
+                <div className="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center group-hover:border-rose-500 group-hover:bg-rose-600 transition-all duration-700">
+                    <ArrowUpRight size={32} strokeWidth={1} />
+                </div>
+                <div className="text-left">
+                    <span className="text-[10px] font-black uppercase tracking-[0.6em] block mb-2">Initialize Lab</span>
+                    <span className="serif text-2xl italic font-light">Experimental Track 04</span>
+                </div>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Archive Link */}
-            <div 
-              onClick={onNavigateToCatalog}
-              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
-            >
-               <img 
-                src="https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop" 
-                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
-                alt="Archive"
-               />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
-                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">Registry 0.4</span>
-                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Archives</h3>
-                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
-                    <ArrowUpRight size={20} />
-                  </div>
-               </div>
-            </div>
-
-            {/* Manifesto Link */}
-            <div 
-              onClick={onNavigateToManifesto}
-              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
-            >
-               <img 
-                src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200&auto=format&fit=crop" 
-                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
-                alt="Manifesto"
-               />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
-                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">The Protocol</span>
-                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Manifesto</h3>
-                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
-                    <ArrowUpRight size={20} />
-                  </div>
-               </div>
-            </div>
-
-            {/* Lab Link */}
-            <div 
-              onClick={onNavigateToLab}
-              className="group relative h-[700px] rounded-[60px] overflow-hidden cursor-pointer shadow-2xl transition-transform duration-700 hover:-translate-y-4"
-            >
-               <img 
-                src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop" 
-                className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-[2s]"
-                alt="Lab"
-               />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-               <div className="absolute inset-0 p-12 flex flex-col justify-end items-start">
-                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/40 mb-4 italic">Neural Core</span>
-                  <h3 className="serif text-5xl italic font-bold text-white mb-6">Synthesis Lab</h3>
-                  <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center text-white group-hover:bg-rose-600 group-hover:border-rose-600 transition-all">
-                    <ArrowUpRight size={20} />
-                  </div>
-               </div>
-            </div>
+          <div className="xl:w-2/5 reveal" style={{ transitionDelay: '300ms' }}>
+             <div className="aspect-square w-full rounded-[120px] bg-white/[0.02] border border-white/10 p-12 flex items-center justify-center relative group overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-rose-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                <Dna size={120} strokeWidth={0.5} className="text-white/10 group-hover:text-rose-500 transition-all duration-[2s] group-hover:rotate-180" />
+                <div className="absolute bottom-16 text-center w-full">
+                    <span className="text-[9px] font-black uppercase tracking-[1em] text-white/10">Synthesis in Progress</span>
+                </div>
+             </div>
           </div>
         </div>
       </section>
 
-      {/* Cart Drawer Enhanced */}
+      {/* Cart Drawer */}
       {isCartOpen && (
         <div className="fixed inset-0 z-[1000] flex justify-end">
             <div className="fixed inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsCartOpen(false)} />
-            <div className="relative w-full max-w-xl bg-white h-full shadow-3xl p-10 md:p-24 flex flex-col animate-in slide-in-from-right duration-700">
-                <div className="flex justify-between items-center mb-20">
-                    <div>
-                        <h2 className="serif text-6xl italic leading-none">The <span className="font-bold not-italic text-rose-600">Collection</span></h2>
-                    </div>
-                    <button onClick={() => setIsCartOpen(false)} className="p-5 rounded-full border border-slate-50 hover:bg-slate-50"><X size={28} strokeWidth={1} /></button>
+            <div className="relative w-full max-w-xl bg-white h-full shadow-3xl p-8 sm:p-24 flex flex-col animate-in slide-in-from-right duration-500 accelerate">
+                <div className="flex justify-between items-center mb-12 sm:mb-20">
+                    <h2 className="serif text-4xl sm:text-6xl italic leading-none">The <span className="font-bold not-italic text-rose-600">Collection</span></h2>
+                    <button onClick={() => setIsCartOpen(false)} className="p-4 rounded-full border border-slate-50 hover:bg-slate-50"><X size={24} strokeWidth={1} /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-12 no-scrollbar pr-2">
+                <div className="flex-1 overflow-y-auto space-y-10 no-scrollbar">
                     {cart.map((item) => (
-                        <div key={item.cartId} className="flex gap-10 items-center group">
-                            <img src={item.image} className="w-24 h-32 rounded-[30px] object-cover grayscale group-hover:grayscale-0 transition-all shadow-lg" alt={item.name} />
+                        <div key={item.cartId} className="flex gap-8 items-center group">
+                            <img src={item.image} className="w-20 h-24 sm:w-24 sm:h-32 rounded-2xl object-cover grayscale shadow-sm" alt={item.name} />
                             <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-30 truncate">{item.name}</h4>
-                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 hover:scale-125 transition-transform"><X size={14}/></button>
+                                <div className="flex justify-between items-start mb-1">
+                                    <h4 className="font-black text-[9px] uppercase tracking-[0.3em] opacity-30 truncate">{item.name}</h4>
+                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 p-2"><X size={14}/></button>
                                 </div>
-                                <p className="serif text-3xl italic text-rose-600">${item.price}</p>
+                                <p className="serif text-2xl sm:text-3xl italic text-rose-600">${item.price}</p>
                             </div>
                         </div>
                     ))}
-                    {cart.length === 0 && <div className="text-center italic serif text-2xl text-black/10 py-20">Archive Empty.</div>}
                 </div>
 
-                <div className="pt-12 mt-8 border-t border-slate-100">
-                    <div className="flex justify-between items-baseline mb-12">
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
-                        <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
+                <div className="pt-8 mt-8 border-t border-slate-100">
+                    <div className="flex justify-between items-baseline mb-8">
+                        <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
+                        <span className="serif text-4xl sm:text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
                     </div>
                     <button 
                       onClick={handleCheckoutInitiate} 
                       disabled={cart.length === 0 || isProcessingCheckout} 
-                      className="w-full bg-black text-white py-8 rounded-full font-black text-[11px] uppercase tracking-[0.5em] hover:bg-rose-600 transition-all shadow-xl disabled:bg-slate-200 flex items-center justify-center gap-4"
+                      className="w-full bg-black text-white py-6 rounded-full font-black text-[10px] uppercase tracking-[0.5em] hover:bg-rose-600 transition-all disabled:opacity-30 flex items-center justify-center gap-4"
                     >
-                      {isProcessingCheckout ? <Loader2 className="animate-spin" /> : (currentCustomer ? 'Proceed to Acquisition' : 'Identify to Proceed')}
+                      {isProcessingCheckout ? <Loader2 className="animate-spin" /> : 'Confirm Acquisition'}
                     </button>
                 </div>
             </div>
