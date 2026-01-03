@@ -15,6 +15,7 @@ const Orders = lazy(() => import('./components/Orders'));
 const Customers = lazy(() => import('./components/Customers'));
 const Marketing = lazy(() => import('./components/Marketing'));
 const Settings = lazy(() => import('./components/Settings'));
+const Orchestrator = lazy(() => import('./components/Orchestrator'));
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#fdfcfb]">
@@ -94,7 +95,6 @@ const App: React.FC = () => {
     let user: User | null = null;
     const normalizedEmail = loginEmail.toLowerCase().trim();
     
-    // Admin Credential Matrix
     if (normalizedEmail === 'admin@seoulmuse.com' && loginPassword === 'admin') {
       user = { id: 'usr-001', name: 'Alexander Pierce', email: 'admin@seoulmuse.com', role: Role.SUPER_ADMIN, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' };
     } else if (normalizedEmail === 'manager@seoulmuse.com' && loginPassword === 'manager') {
@@ -154,6 +154,7 @@ const App: React.FC = () => {
       case '/orders': return <Orders />;
       case '/customers': return <Customers customers={customers} />;
       case '/marketing': return <Marketing onUpdateCoupon={syncAllData} />;
+      case '/orchestrator': return <Orchestrator />;
       case '/settings': return <Settings />;
       default: return <Dashboard />;
     }
@@ -206,7 +207,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Admin View Logic
   return (
     <div className="animate-in fade-in duration-1000 min-h-screen bg-slate-50">
       {!isAuthenticated ? (

@@ -1,13 +1,14 @@
 
-import { Product, InventoryFilters, ProductStatus, Order, OrderStatus, Coupon, Customer } from '../types';
+import { Product, InventoryFilters, ProductStatus, Order, OrderStatus, Coupon, Customer, HomeConfig } from '../types';
 import { supabase } from './supabaseClient';
-import { MOCK_PRODUCTS, MOCK_ORDERS, MOCK_COUPONS, MOCK_CUSTOMERS } from '../constants';
+import { MOCK_PRODUCTS, MOCK_ORDERS, MOCK_COUPONS, MOCK_CUSTOMERS, DEFAULT_HOME_CONFIG } from '../constants';
 
 const KEYS = {
   PRODUCTS: 'seoul_muse_inventory_v2',
   ORDERS: 'seoul_muse_orders_v2',
   COUPONS: 'seoul_muse_coupons_v2',
   CUSTOMERS: 'seoul_muse_customers_v2',
+  HOME_CONFIG: 'seoul_muse_home_config_v2'
 };
 
 const getLocal = (key: string, fallback: any) => {
@@ -15,7 +16,7 @@ const getLocal = (key: string, fallback: any) => {
   if (!data) return fallback;
   try {
     const parsed = JSON.parse(data);
-    return parsed.length > 0 ? parsed : fallback;
+    return parsed && (Array.isArray(parsed) ? parsed.length > 0 : true) ? parsed : fallback;
   } catch {
     return fallback;
   }
@@ -30,6 +31,7 @@ const initLocal = () => {
   if (!localStorage.getItem(KEYS.ORDERS)) setLocal(KEYS.ORDERS, MOCK_ORDERS);
   if (!localStorage.getItem(KEYS.COUPONS)) setLocal(KEYS.COUPONS, MOCK_COUPONS);
   if (!localStorage.getItem(KEYS.CUSTOMERS)) setLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
+  if (!localStorage.getItem(KEYS.HOME_CONFIG)) setLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
 };
 
 initLocal();
@@ -52,7 +54,6 @@ export const inventoryService = {
         console.error("Supabase connection error:", e);
       }
     }
-    // Fallback to local storage or mocks if remote is empty/fails
     return getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
   },
 
@@ -67,6 +68,14 @@ export const inventoryService = {
     else products.push({ ...product, id: `art-${Date.now()}` });
     setLocal(KEYS.PRODUCTS, products);
     return product;
+  },
+
+  async getHomeConfig(): Promise<HomeConfig> {
+    return getLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
+  },
+
+  async saveHomeConfig(config: HomeConfig): Promise<void> {
+    setLocal(KEYS.HOME_CONFIG, config);
   },
 
   async deleteProduct(id: string): Promise<void> {
@@ -98,7 +107,6 @@ export const inventoryService = {
       shippingAddress: orderData.shippingAddress || 'N/A'
     };
 
-    // Subtraction Protocol
     for (const item of newOrder.items) {
       await this.adjustStock(item.productId, -item.quantity);
     }
@@ -157,7 +165,7 @@ export const inventoryService = {
         .from('customers')
         .select('*')
         .eq('email', email.toLowerCase())
-        .eq('password', password) // Simplified for demo; usually would hash
+        .eq('password', password)
         .single();
       if (!error && data) return data;
     }

@@ -25,6 +25,7 @@
         
         * {
             -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
         }
 
         body { 
@@ -35,28 +36,31 @@
           overflow-x: hidden;
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
         
         .serif { font-family: 'Cormorant Garamond', serif; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         /* Hardware Acceleration */
         .accelerate {
             transform: translateZ(0);
             backface-visibility: hidden;
             perspective: 1000px;
+            will-change: transform;
         }
 
         /* Improved Animation Curves */
         .stagger-in {
             opacity: 0;
-            animation: slideUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: slideUp 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             will-change: transform, opacity;
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translate3d(0, 60px, 0); }
+            from { opacity: 0; transform: translate3d(0, 80px, 0); }
             to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
 
@@ -74,21 +78,6 @@
         @keyframes scan {
             0% { top: -10%; }
             100% { top: 110%; }
-        }
-
-        /* Smooth Mobile Scrolling */
-        .scroll-container {
-            -webkit-overflow-scrolling: touch;
-        }
-
-        img { 
-            content-visibility: auto; 
-            max-width: 100%;
-            height: auto;
-        }
-        
-        button, a {
-            touch-action: manipulation;
         }
 
         /* Film Grain Effect */
@@ -137,12 +126,17 @@
         /* Reveal on scroll base */
         .reveal {
             opacity: 0;
-            transform: translateY(30px);
-            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(40px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .reveal.active {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        img {
+            image-rendering: -webkit-optimize-contrast;
+            object-fit: cover;
         }
     </style>
 <script type="importmap">
@@ -161,7 +155,7 @@
 }
 </script>
 </head>
-<body class="selection:bg-rose-600 selection:text-white antialiased noise">
+<body class="selection:bg-rose-600 selection:text-white antialiased noise scroll-container">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

@@ -1,5 +1,34 @@
 
-import { ProductStatus, OrderStatus, Role, Product, Order, Customer, Coupon } from './types';
+import { ProductStatus, OrderStatus, Role, Product, Order, Customer, Coupon, HomeConfig } from './types';
+
+export const DEFAULT_HOME_CONFIG: HomeConfig = {
+  hero: {
+    headingPart1: "Seoul",
+    headingPart2: "Aura",
+    subheading: "The intersection of structural minimalism and ethereal editorial grace. Curated for the modern inhabitant of the Seongsu-dong creative district.",
+    image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=2000&auto=format&fit=crop",
+    registryLabel: "Premium Registry // Spring 2026"
+  },
+  lookbook: {
+    title: "District",
+    subtitle: "Registry Log // Urban Narrative",
+    items: [
+      { title: 'Digital Silk', desc: 'Minimalist forms defined by shadow and light.', image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200' },
+      { title: 'Atelier Core', desc: 'Architectural silhouettes for the modern inhabitant.', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200' },
+      { title: 'Industrial Grit', desc: 'Synthesizing raw concrete with soft silk drapes.', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200' }
+    ]
+  },
+  aura: {
+    heading: "Aura Selection",
+    subheading: "High Conversion Artifacts"
+  },
+  lab: {
+    heading: "Neural Core Synthesis",
+    subheading: "Dream in Digital.",
+    trackLabel: "Experimental Alpha v4",
+    image: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1200&auto=format&fit=crop"
+  }
+};
 
 export const MOCK_PRODUCTS: Product[] = [
   { 
@@ -131,6 +160,7 @@ export const NAVIGATION = [
   { name: 'Dashboard', icon: 'LayoutDashboard', path: '/', roles: [Role.SUPER_ADMIN, Role.MANAGER, Role.SUPPORT] },
   { name: 'Inventory', icon: 'Box', path: '/products', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'Orders', icon: 'ShoppingCart', path: '/orders', roles: [Role.SUPER_ADMIN, Role.MANAGER, Role.SUPPORT] },
+  { name: 'Storefront', icon: 'Monitor', path: '/orchestrator', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'Muses', icon: 'Users', path: '/customers', roles: [Role.SUPER_ADMIN, Role.SUPPORT] },
   { name: 'Coupons', icon: 'Ticket', path: '/marketing', roles: [Role.SUPER_ADMIN, Role.MANAGER] },
   { name: 'System', icon: 'Settings', path: '/settings', roles: [Role.SUPER_ADMIN] },

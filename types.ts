@@ -42,6 +42,31 @@ export interface Product {
   createdAt?: string;
 }
 
+export interface HomeConfig {
+  hero: {
+    headingPart1: string;
+    headingPart2: string;
+    subheading: string;
+    image: string;
+    registryLabel: string;
+  };
+  lookbook: {
+    title: string;
+    subtitle: string;
+    items: { title: string; desc: string; image: string }[];
+  };
+  aura: {
+    heading: string;
+    subheading: string;
+  };
+  lab: {
+    heading: string;
+    subheading: string;
+    trackLabel: string;
+    image: string;
+  };
+}
+
 export interface InventoryFilters {
   search: string;
   category: string;
@@ -74,7 +99,7 @@ export interface Customer {
   id: string;
   name: string;
   email: string;
-  password?: string; // Secure field for protocol
+  password?: string;
   totalOrders: number;
   totalSpent: number;
   status: 'Active' | 'Blocked';
