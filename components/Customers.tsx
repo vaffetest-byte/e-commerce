@@ -27,6 +27,11 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
   const [selectedProdId, setSelectedProdId] = useState("");
   const [creatingOrder, setCreatingOrder] = useState(false);
 
+  // Sync internal state with props
+  useEffect(() => {
+    setCustomers(initialCustomers);
+  }, [initialCustomers]);
+
   useEffect(() => {
     const fetchProds = async () => {
       const data = await inventoryService.getProducts();
@@ -44,12 +49,12 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
   };
 
   const handleToggleBlock = async (customer: Customer) => {
-    const newStatus = customer.status === 'Active' ? 'Blocked' : 'Active';
+    const newStatus: 'Active' | 'Blocked' = customer.status === 'Active' ? 'Blocked' : 'Active';
     if (window.confirm(`Initialize ${newStatus} protocol for this resident?`)) {
       await inventoryService.updateCustomerStatus(customer.id, newStatus);
-      const updated = customers.map(c => c.id === customer.id ? { ...c, status: newStatus } : c);
+      const updated: Customer[] = customers.map(c => c.id === customer.id ? { ...c, status: newStatus } : c);
       setCustomers(updated);
-      if (selectedCustomer?.id === customer.id) {
+      if (selectedCustomer && selectedCustomer.id === customer.id) {
         setSelectedCustomer({ ...selectedCustomer, status: newStatus });
       }
     }
@@ -103,14 +108,14 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
             <div className="relative bg-white w-full max-w-7xl h-[90vh] rounded-[40px] md:rounded-[60px] shadow-3xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col md:flex-row">
                 
                 {/* Sidebar: Profile Details */}
-                <div className="md:w-1/4 bg-slate-950 p-12 text-white flex flex-col justify-between overflow-y-auto no-scrollbar">
+                <div className="md:w-1/4 bg-slate-50 p-12 text-slate-900 flex flex-col justify-between overflow-y-auto no-scrollbar border-r border-black/[0.03]">
                     <div>
-                        <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-4 text-white/30 hover:text-rose-500 transition-colors mb-16 text-[10px] font-black uppercase tracking-widest">
+                        <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-4 text-black/30 hover:text-rose-500 transition-colors mb-16 text-[10px] font-black uppercase tracking-widest">
                             <ArrowLeft size={16} /> Exit Dossier
                         </button>
                         
                         <div className="text-center mb-12">
-                            <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center text-rose-500 mx-auto mb-8 shadow-2xl border border-white/5">
+                            <div className="w-24 h-24 bg-white rounded-[40px] flex items-center justify-center text-rose-500 mx-auto mb-8 shadow-2xl border border-black/5">
                                 <User size={48} strokeWidth={1} />
                             </div>
                             <h2 className="serif text-3xl font-bold italic tracking-tighter mb-2">@{selectedCustomer.name.toLowerCase()}</h2>
@@ -121,18 +126,18 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
 
                         <div className="space-y-10">
                             <div className="space-y-3">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 block">Resident Handle</span>
-                                <p className="text-xs font-mono text-white/60 truncate">{selectedCustomer.email}</p>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-black/20 block">Resident Handle</span>
+                                <p className="text-xs font-mono text-black/60 truncate">{selectedCustomer.email}</p>
                             </div>
                             <div className="space-y-3">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 block">Registry Metrics</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-black/20 block">Registry Metrics</span>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Spent</p>
+                                    <div className="bg-white p-4 rounded-2xl border border-black/5">
+                                        <p className="text-[8px] font-black text-black/20 uppercase tracking-widest mb-1">Spent</p>
                                         <p className="text-lg font-black">${selectedCustomer.totalSpent.toFixed(0)}</p>
                                     </div>
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Orders</p>
+                                    <div className="bg-white p-4 rounded-2xl border border-black/5">
+                                        <p className="text-[8px] font-black text-black/20 uppercase tracking-widest mb-1">Orders</p>
                                         <p className="text-lg font-black">{selectedCustomer.totalOrders}</p>
                                     </div>
                                 </div>
@@ -140,7 +145,7 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
                         </div>
                     </div>
 
-                    <div className="pt-12 border-t border-white/5 space-y-4">
+                    <div className="pt-12 border-t border-black/5 space-y-4">
                         <button 
                             onClick={() => handleToggleBlock(selectedCustomer)}
                             className={`w-full flex items-center justify-center gap-4 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCustomer.status === 'Active' ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'}`}
@@ -280,7 +285,7 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
               { label: 'Total Muses', val: customers.length, icon: Users, color: 'text-indigo-500' },
               { label: 'Active Sessions', val: customers.filter(c => c.status === 'Active').length, icon: Activity, color: 'text-emerald-500' },
               { label: 'Elite Residents', val: customers.filter(c => c.totalSpent > 1000).length, icon: ShieldCheck, color: 'text-rose-500' },
-              { label: 'Avg LTV', val: `$${(customers.reduce((s, c) => s + c.totalSpent, 0) / customers.length).toFixed(0)}`, icon: DollarSign, color: 'text-amber-500' }
+              { label: 'Avg LTV', val: `$${customers.length > 0 ? (customers.reduce((s, c) => s + c.totalSpent, 0) / customers.length).toFixed(0) : "0"}`, icon: DollarSign, color: 'text-amber-500' }
           ].map((stat, i) => (
               <div key={i} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col gap-4 group hover:shadow-xl transition-all">
                   <div className={`w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
@@ -336,7 +341,7 @@ const Customers: React.FC<CustomersProps> = ({ customers: initialCustomers }) =>
                     </span>
                   </td>
                   <td className="px-12 py-10 text-right">
-                    <button className="p-4 bg-white border border-slate-100 text-slate-200 group-hover:text-rose-500 group-hover:border-rose-100 rounded-2xl transition-all shadow-sm">
+                    <button className="p-4 bg-white border border-slate-100 text-slate-200 group-hover:text-rose-50 group-hover:border-rose-100 rounded-2xl transition-all shadow-sm">
                         <ChevronRight size={18} />
                     </button>
                   </td>
