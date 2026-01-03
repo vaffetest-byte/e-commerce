@@ -68,7 +68,7 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
       <nav className="fixed top-0 w-full z-[1000] h-28 flex items-center px-8 md:px-24 justify-between bg-black/40 backdrop-blur-3xl border-b border-white/[0.05]">
         <div className="flex items-center gap-20">
           <button className="flex flex-col text-left group" onClick={onNavigateToHome}>
-            <span className="serif text-3xl md:text-5xl font-bold tracking-tighter leading-none group-hover:text-rose-500 transition-colors">Seoul Muse</span>
+            <span className="serif text-3xl md:text-5xl font-bold tracking-tighter leading-none group-hover:text-rose-50 transition-colors">Seoul Muse</span>
             <div className="flex items-center gap-4 mt-2">
                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.8em] text-rose-600">Synthesis Terminal</span>
                <div className="w-1.5 h-1.5 bg-rose-600 rounded-full animate-ping" />
@@ -90,21 +90,24 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
               <div className="h-[1px] w-8 bg-rose-500/30" /> Control Matrix
             </span>
             <div className="grid grid-cols-1 gap-4">
-              {(Object.keys(experimentConfigs) as Array<keyof typeof experimentConfigs>).map(key => (
-                <button 
-                  key={key}
-                  onClick={() => setActiveExperiment(key)}
-                  className={`p-8 rounded-[40px] border text-left transition-all duration-700 group relative overflow-hidden ${activeExperiment === key ? 'bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]' : 'bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.04]'}`}
-                >
-                  <div className="relative z-10 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.3em] mb-2">{experimentConfigs[key].title}</h4>
-                      <p className="text-[9px] font-light opacity-50 uppercase tracking-widest">{experimentConfigs[key].desc}</p>
+              {(Object.keys(experimentConfigs) as Array<keyof typeof experimentConfigs>).map(key => {
+                const Icon = experimentConfigs[key].icon;
+                return (
+                  <button 
+                    key={key}
+                    onClick={() => setActiveExperiment(key)}
+                    className={`p-8 rounded-[40px] border text-left transition-all duration-700 group relative overflow-hidden ${activeExperiment === key ? 'bg-white text-black border-white shadow-[0_0_50px_rgba(255,255,255,0.1)]' : 'bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.04]'}`}
+                  >
+                    <div className="relative z-10 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] mb-2">{experimentConfigs[key].title}</h4>
+                        <p className="text-[9px] font-light opacity-50 uppercase tracking-widest">{experimentConfigs[key].desc}</p>
+                      </div>
+                      <Icon size={20} className={activeExperiment === key ? 'text-rose-500' : 'text-white/20'} />
                     </div>
-                    <experimentConfigs[key].icon size={20} className={activeExperiment === key ? 'text-rose-500' : 'text-white/20'} />
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -118,7 +121,7 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
                    <div className="w-1.5 h-1.5 rounded-full bg-white/10 mt-1.5 group-hover:bg-rose-500 group-hover:animate-pulse transition-all" />
                    <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline mb-1">
-                        <span className="text-[8px] font-black uppercase text-white/40 group-hover:text-rose-500 transition-colors">{log.type}</span>
+                        <span className="text-[8px] font-black uppercase text-white/40 group-hover:text-rose-50 transition-colors">{log.type}</span>
                         <span className="text-[7px] font-mono text-white/10">{log.timestamp}</span>
                       </div>
                       <p className="text-[10px] text-white/20 group-hover:text-white/60 truncate uppercase font-light tracking-widest">{log.prompt}</p>
@@ -138,7 +141,7 @@ const Lab: React.FC<LabProps> = ({ onNavigateToHome, onNavigateToCatalog, onNavi
             
             <div className="flex justify-between items-start">
                <div className="space-y-4">
-                 <h2 className="serif text-5xl md:text-9xl italic font-light tracking-tighter text-white">Synthesize <br/><span className="not-italic font-bold text-rose-600">Identity.</span></h2>
+                 <h2 className="serif text-5xl md:text-9xl italic font-light tracking-tighter text-white">Synthesize <br /> <span className="not-italic font-bold text-rose-600">Identity.</span></h2>
                  <p className="text-[9px] font-black uppercase tracking-[0.8em] text-white/20">Aura-Logic Sync Active</p>
                </div>
                <div className="p-6 rounded-full bg-white/5 border border-white/10 animate-float">
