@@ -26,6 +26,16 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  lastLogin?: string;
+}
+
+export interface SecurityLog {
+  id: string;
+  action: string;
+  user: string;
+  ip: string;
+  timestamp: string;
+  severity: 'low' | 'medium' | 'high';
 }
 
 export interface Product {
