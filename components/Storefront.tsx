@@ -447,7 +447,7 @@ const Storefront: React.FC<StorefrontProps> = ({
         </div>
       </section>
 
-      {/* Synthesis Call: Dynamic Lab - Enhanced with attractive imagery */}
+      {/* Synthesis Call: Dynamic Lab - Guaranteed High Impact Visual */}
       <section className="relative px-6 md:px-20 py-60 bg-[#050505] overflow-hidden">
         <div className="absolute top-0 right-0 w-full h-full bg-rose-600/5 blur-[200px] pointer-events-none" />
         <div className="max-w-7xl mx-auto flex flex-col xl:flex-row items-center gap-24 relative z-10">
@@ -474,19 +474,17 @@ const Storefront: React.FC<StorefrontProps> = ({
           </div>
           
           <div className="xl:w-2/5 reveal" style={{ transitionDelay: '300ms' }}>
-            <div className="relative aspect-square w-full rounded-[120px] overflow-hidden group shadow-[0_0_80px_rgba(244,63,94,0.1)] border border-white/5 bg-slate-900">
-              {/* Secondary layer for "Girl" requested visual if primary fails or is bubble texture */}
-              <div className="absolute inset-0 z-0 opacity-20 transition-all duration-1000 group-hover:opacity-40">
-                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Muse Persona" />
-              </div>
-
+            <div className="relative aspect-square w-full rounded-[120px] overflow-hidden group shadow-[0_0_120px_rgba(244,63,94,0.15)] border border-white/5 bg-slate-900">
               <img 
                 src={homeConfig.lab.image} 
-                className="relative z-10 w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s]" 
+                className="relative z-10 w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s]" 
                 alt="Neural Synthesis Model" 
                 loading="lazy"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1800&auto=format&fit=crop";
+                }}
               />
-              <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 to-transparent opacity-60" />
+              <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 to-transparent opacity-40" />
               
               {/* Decorative Neural Elements */}
               <div className="absolute top-12 left-12 z-30 p-6 rounded-full border border-white/10 bg-black/40 backdrop-blur-md animate-pulse">
@@ -499,7 +497,7 @@ const Storefront: React.FC<StorefrontProps> = ({
               </div>
               
               {/* Scanning effect Overlay */}
-              <div className="absolute top-0 left-0 w-full h-1 z-40 bg-rose-500/30 blur-sm animate-[scan_4s_linear_infinite]" />
+              <div className="absolute top-0 left-0 w-full h-1 z-40 bg-rose-500/40 blur-sm animate-[scan_4s_linear_infinite]" />
             </div>
           </div>
         </div>
@@ -535,7 +533,7 @@ const Storefront: React.FC<StorefrontProps> = ({
 
                 <div className="pt-12 mt-8 border-t border-slate-100">
                     <div className="flex justify-between items-baseline mb-12">
-                        <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
                         <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
                     </div>
                     <button 

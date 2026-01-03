@@ -8,7 +8,7 @@ const KEYS = {
   ORDERS: 'seoul_muse_orders_v2',
   COUPONS: 'seoul_muse_coupons_v2',
   CUSTOMERS: 'seoul_muse_customers_v2',
-  HOME_CONFIG: 'seoul_muse_home_config_v2'
+  HOME_CONFIG: 'seoul_muse_home_config_v3' // Incremented version to force sync new girl image
 };
 
 const getLocal = (key: string, fallback: any) => {

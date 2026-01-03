@@ -25,8 +25,8 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
   lab: {
     heading: "Neural Core Synthesis",
     subheading: "Dream in Digital.",
-    trackLabel: "Experimental Alpha v4",
-    image: "https://images.unsplash.com/photo-1512316609839-ce289d3eba0a?q=80&w=1200&auto=format&fit=crop"
+    trackLabel: "Experimental Alpha v5",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1800&auto=format&fit=crop"
   }
 };
 
