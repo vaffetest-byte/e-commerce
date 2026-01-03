@@ -1,5 +1,10 @@
 
-import { Product, InventoryFilters, ProductStatus, Order, OrderStatus, Coupon, Customer, HomeConfig, ShippingAddress, SupportTicket, TicketStatus, TicketPriority, AbandonedCart } from '../types';
+import { 
+  Product, InventoryFilters, ProductStatus, Order, 
+  OrderStatus, Coupon, Customer, HomeConfig, 
+  ShippingAddress, SupportTicket, TicketStatus, 
+  TicketPriority, AbandonedCart 
+} from '../types';
 import { supabase } from './supabaseClient';
 import { MOCK_PRODUCTS, MOCK_ORDERS, MOCK_COUPONS, MOCK_CUSTOMERS, DEFAULT_HOME_CONFIG } from '../constants';
 
@@ -22,6 +27,7 @@ const simpleHash = (str: string) => {
   return hash.toString(16);
 };
 
+// Local storage helpers for fallbacks
 const getLocal = (key: string, fallback: any) => {
   const data = localStorage.getItem(key);
   if (!data) return fallback;
@@ -37,92 +43,83 @@ const setLocal = (key: string, data: any) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-const initLocal = () => {
-  if (!localStorage.getItem(KEYS.PRODUCTS)) setLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
-  if (!localStorage.getItem(KEYS.ORDERS)) setLocal(KEYS.ORDERS, MOCK_ORDERS);
-  if (!localStorage.getItem(KEYS.COUPONS)) setLocal(KEYS.COUPONS, MOCK_COUPONS);
-  if (!localStorage.getItem(KEYS.CUSTOMERS)) setLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
-  if (!localStorage.getItem(KEYS.HOME_CONFIG)) setLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
-  if (!localStorage.getItem(KEYS.TICKETS)) setLocal(KEYS.TICKETS, []);
-  if (!localStorage.getItem(KEYS.ABANDONED)) {
-    const abandoned: AbandonedCart[] = [
-      { id: 'abc-1', customerName: 'Min-ji Kim', customerEmail: 'minji@kpop.kr', lastActive: '2h ago', totalValue: 245.00, recoverySent: false, items: [{name: 'Silk Gown'}] }
-    ];
-    setLocal(KEYS.ABANDONED, abandoned);
-  }
-};
-
-initLocal();
-
 export const inventoryService = {
+  /**
+   * PRODUCTS
+   */
   async getProducts(filters?: InventoryFilters): Promise<Product[]> {
-    let data = getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
-    
-    if (filters) {
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        data = data.filter((p: Product) => 
-          p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-        );
+    if (supabase) {
+      let query = supabase.from('products').select('*');
+      
+      if (filters) {
+        if (filters.search) query = query.or(`name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%`);
+        if (filters.category && filters.category !== 'All') query = query.eq('category', filters.category);
+        if (filters.status && filters.status !== 'All') query = query.eq('status', filters.status);
+        if (filters.minPrice !== undefined) query = query.gte('price', filters.minPrice);
+        if (filters.maxPrice !== undefined) query = query.lte('price', filters.maxPrice);
+        
+        query = query.order(filters.sortBy || 'name', { ascending: filters.sortOrder === 'asc' });
       }
-      if (filters.status && filters.status !== 'All') {
-        data = data.filter((p: Product) => p.status === filters.status);
-      }
-      if (filters.category && filters.category !== 'All') {
-        data = data.filter((p: Product) => p.category === filters.category);
-      }
-      if (filters.minPrice !== undefined) data = data.filter((p: Product) => p.price >= filters.minPrice!);
-      if (filters.maxPrice !== undefined) data = data.filter((p: Product) => p.price <= filters.maxPrice!);
 
-      const order = filters.sortOrder === 'asc' ? 1 : -1;
-      data.sort((a: any, b: any) => {
-        const valA = a[filters.sortBy || 'name'];
-        const valB = b[filters.sortBy || 'name'];
-        if (typeof valA === 'string') return valA.localeCompare(valB) * order;
-        return (valA - valB) * order;
-      });
+      const { data, error } = await query;
+      if (!error && data) {
+        setLocal(KEYS.PRODUCTS, data); // Sync local cache
+        return data as Product[];
+      }
     }
-    return data;
+    return getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
   },
 
   async saveProduct(product: Product): Promise<Product> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('products')
+        .upsert({ ...product, id: product.id || `art-${Date.now()}` })
+        .select()
+        .single();
+      if (!error && data) return data as Product;
+    }
     const products = getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
     const idx = products.findIndex((p: Product) => p.id === product.id);
-    if (idx > -1) products[idx] = product;
-    else products.push({ ...product, id: `art-${Date.now()}` });
+    const newProd = { ...product, id: product.id || `art-${Date.now()}` };
+    if (idx > -1) products[idx] = newProd;
+    else products.push(newProd);
     setLocal(KEYS.PRODUCTS, products);
-    return product;
-  },
-
-  async getHomeConfig(): Promise<HomeConfig> {
-    return getLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
-  },
-
-  async saveHomeConfig(config: HomeConfig): Promise<void> {
-    setLocal(KEYS.HOME_CONFIG, config);
+    return newProd;
   },
 
   async deleteProduct(id: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('products').delete().eq('id', id);
+    }
     const products = getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
     setLocal(KEYS.PRODUCTS, products.filter((p: Product) => p.id !== id));
   },
 
-  async toggleWishlist(customerId: string, productId: string): Promise<string[]> {
-    const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
-    const idx = customers.findIndex((c: Customer) => c.id === customerId);
-    if (idx > -1) {
-      const wishlist = customers[idx].wishlist || [];
-      const pIdx = wishlist.indexOf(productId);
-      if (pIdx > -1) wishlist.splice(pIdx, 1);
-      else wishlist.push(productId);
-      customers[idx].wishlist = wishlist;
-      setLocal(KEYS.CUSTOMERS, customers);
-      return wishlist;
+  async adjustStock(id: string, delta: number): Promise<void> {
+    const products = await this.getProducts();
+    const product = products.find(p => p.id === id);
+    if (product) {
+      const newStock = Math.max(0, product.stock + delta);
+      if (supabase) {
+        await supabase.from('products').update({ stock: newStock }).eq('id', id);
+      }
+      product.stock = newStock;
+      setLocal(KEYS.PRODUCTS, products);
     }
-    return [];
   },
 
+  /**
+   * ORDERS
+   */
   async getOrders(): Promise<Order[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
+      if (!error && data) {
+        setLocal(KEYS.ORDERS, data);
+        return data as Order[];
+      }
+    }
     return getLocal(KEYS.ORDERS, MOCK_ORDERS);
   },
 
@@ -144,6 +141,11 @@ export const inventoryService = {
       trackingNumber: orderData.trackingNumber || `SM-TRK-${Math.floor(Math.random() * 1000000)}`
     };
 
+    if (supabase) {
+      await supabase.from('orders').insert([newOrder]);
+    }
+
+    // Update stock and local
     for (const item of newOrder.items) {
       await this.adjustStock(item.productId, -item.quantity);
     }
@@ -152,18 +154,25 @@ export const inventoryService = {
     orders.unshift(newOrder);
     setLocal(KEYS.ORDERS, orders);
 
-    const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
-    const cIdx = customers.findIndex((c: Customer) => c.email === newOrder.customerEmail);
+    // Update customer LTV
+    const customers = await this.getCustomers();
+    const cIdx = customers.findIndex(c => c.email === newOrder.customerEmail);
     if (cIdx > -1) {
-      customers[cIdx].totalOrders += 1;
-      customers[cIdx].totalSpent += newOrder.total;
-      setLocal(KEYS.CUSTOMERS, customers);
+      const updatedCust = {
+        ...customers[cIdx],
+        totalOrders: customers[cIdx].totalOrders + 1,
+        totalSpent: customers[cIdx].totalSpent + newOrder.total
+      };
+      await this.updateCustomerProfile(updatedCust.id, updatedCust);
     }
 
     return newOrder;
   },
 
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
+    if (supabase) {
+      await supabase.from('orders').update({ status }).eq('id', orderId);
+    }
     const orders = getLocal(KEYS.ORDERS, MOCK_ORDERS);
     const idx = orders.findIndex((o: Order) => o.id === orderId);
     if (idx > -1) {
@@ -173,6 +182,9 @@ export const inventoryService = {
   },
 
   async updateOrderTracking(orderId: string, trackingNumber: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('orders').update({ trackingNumber }).eq('id', orderId);
+    }
     const orders = getLocal(KEYS.ORDERS, MOCK_ORDERS);
     const idx = orders.findIndex((o: Order) => o.id === orderId);
     if (idx > -1) {
@@ -181,23 +193,41 @@ export const inventoryService = {
     }
   },
 
-  async adjustStock(id: string, delta: number): Promise<void> {
-    const products = getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
-    const idx = products.findIndex((p: Product) => p.id === id);
-    if (idx > -1) {
-      products[idx].stock = Math.max(0, products[idx].stock + delta);
-      setLocal(KEYS.PRODUCTS, products);
-    }
-  },
-
   async deleteOrder(id: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('orders').delete().eq('id', id);
+    }
     const orders = getLocal(KEYS.ORDERS, MOCK_ORDERS);
     setLocal(KEYS.ORDERS, orders.filter((o: Order) => o.id !== id));
+  },
+
+  /**
+   * CUSTOMERS
+   */
+  async getCustomers(): Promise<Customer[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('customers').select('*');
+      if (!error && data) {
+        setLocal(KEYS.CUSTOMERS, data);
+        return data as Customer[];
+      }
+    }
+    return getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
   },
 
   async authenticateCustomer(email: string, password?: string): Promise<Customer | null> {
     const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = password ? simpleHash(password) : undefined;
+    
+    if (supabase) {
+      const query = supabase.from('customers').select('*').eq('email', normalizedEmail);
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const user = data[0] as Customer;
+        if (!hashedPassword || user.password === hashedPassword) return user;
+      }
+    }
+
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
     return customers.find((c: any) => c.email.toLowerCase() === normalizedEmail && (!hashedPassword || c.password === hashedPassword)) || null;
   },
@@ -217,6 +247,11 @@ export const inventoryService = {
       wishlist: [],
       addresses: []
     };
+
+    if (supabase) {
+      await supabase.from('customers').insert([newCustomer]);
+    }
+
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
     customers.push(newCustomer);
     setLocal(KEYS.CUSTOMERS, customers);
@@ -224,6 +259,10 @@ export const inventoryService = {
   },
 
   async updateCustomerProfile(id: string, updates: Partial<Customer>): Promise<Customer> {
+    if (supabase) {
+      const { data, error } = await supabase.from('customers').update(updates).eq('id', id).select().single();
+      if (!error && data) return data as Customer;
+    }
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
     const idx = customers.findIndex((c: Customer) => c.id === id);
     if (idx > -1) {
@@ -235,6 +274,9 @@ export const inventoryService = {
   },
 
   async updateCustomerStatus(id: string, status: 'Active' | 'Blocked'): Promise<void> {
+    if (supabase) {
+      await supabase.from('customers').update({ status }).eq('id', id);
+    }
     const customers = getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
     const idx = customers.findIndex((c: Customer) => c.id === id);
     if (idx > -1) {
@@ -243,29 +285,83 @@ export const inventoryService = {
     }
   },
 
-  async getCoupons(): Promise<Coupon[]> { return getLocal(KEYS.COUPONS, MOCK_COUPONS); },
+  async toggleWishlist(customerId: string, productId: string): Promise<string[]> {
+    const customers = await this.getCustomers();
+    const idx = customers.findIndex((c: Customer) => c.id === customerId);
+    if (idx > -1) {
+      const wishlist = customers[idx].wishlist || [];
+      const pIdx = wishlist.indexOf(productId);
+      if (pIdx > -1) wishlist.splice(pIdx, 1);
+      else wishlist.push(productId);
+      
+      await this.updateCustomerProfile(customerId, { wishlist });
+      return wishlist;
+    }
+    return [];
+  },
+
+  /**
+   * COUPONS
+   */
+  async getCoupons(): Promise<Coupon[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('coupons').select('*');
+      if (!error && data) {
+        setLocal(KEYS.COUPONS, data);
+        return data as Coupon[];
+      }
+    }
+    return getLocal(KEYS.COUPONS, MOCK_COUPONS);
+  },
+
   async saveCoupon(coupon: Coupon): Promise<Coupon> {
+    const updatedCoupon = { ...coupon, id: coupon.id || `cpn-${Date.now()}` };
+    if (supabase) {
+      await supabase.from('coupons').upsert(updatedCoupon);
+    }
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
     const idx = coupons.findIndex((c: Coupon) => c.id === coupon.id);
-    const updatedCoupon = { ...coupon, id: coupon.id || `cpn-${Date.now()}` };
     if (idx > -1) coupons[idx] = updatedCoupon;
     else coupons.push(updatedCoupon);
     setLocal(KEYS.COUPONS, coupons);
     return updatedCoupon;
   },
+
   async deleteCoupon(id: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('coupons').delete().eq('id', id);
+    }
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
     setLocal(KEYS.COUPONS, coupons.filter((c: Coupon) => c.id !== id));
   },
-  async getCustomers(): Promise<Customer[]> { return getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS); },
-  
-  // Support Ticket Methods
+
+  /**
+   * CONFIG & SUPPORT
+   */
+  async getHomeConfig(): Promise<HomeConfig> {
+    if (supabase) {
+      const { data, error } = await supabase.from('site_config').select('value').eq('key', 'home_config').single();
+      if (!error && data) return data.value as HomeConfig;
+    }
+    return getLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
+  },
+
+  async saveHomeConfig(config: HomeConfig): Promise<void> {
+    if (supabase) {
+      await supabase.from('site_config').upsert({ key: 'home_config', value: config });
+    }
+    setLocal(KEYS.HOME_CONFIG, config);
+  },
+
   async getTickets(): Promise<SupportTicket[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('support_tickets').select('*').order('updatedAt', { ascending: false });
+      if (!error && data) return data as SupportTicket[];
+    }
     return getLocal(KEYS.TICKETS, []);
   },
 
   async createTicket(ticketData: Partial<SupportTicket>): Promise<SupportTicket> {
-    const tickets = getLocal(KEYS.TICKETS, []);
     const newTicket: SupportTicket = {
       id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
       customerId: ticketData.customerId || 'anon',
@@ -280,45 +376,80 @@ export const inventoryService = {
       internalNotes: [],
       replies: []
     };
+    
+    if (supabase) {
+      await supabase.from('support_tickets').insert([newTicket]);
+    }
+    
+    const tickets = getLocal(KEYS.TICKETS, []);
     tickets.unshift(newTicket);
     setLocal(KEYS.TICKETS, tickets);
     return newTicket;
   },
 
   async updateTicket(ticketId: string, updates: Partial<SupportTicket>): Promise<void> {
+    const timestamp = new Date().toISOString();
+    if (supabase) {
+      await supabase.from('support_tickets').update({ ...updates, updatedAt: timestamp }).eq('id', ticketId);
+    }
     const tickets = getLocal(KEYS.TICKETS, []);
     const idx = tickets.findIndex((t: SupportTicket) => t.id === ticketId);
     if (idx > -1) {
-      tickets[idx] = { ...tickets[idx], ...updates, updatedAt: new Date().toISOString() };
+      tickets[idx] = { ...tickets[idx], ...updates, updatedAt: timestamp };
       setLocal(KEYS.TICKETS, tickets);
     }
   },
 
   async addTicketNote(ticketId: string, note: string): Promise<void> {
-    const tickets = getLocal(KEYS.TICKETS, []);
+    const tickets = await this.getTickets();
     const idx = tickets.findIndex((t: SupportTicket) => t.id === ticketId);
     if (idx > -1) {
-      tickets[idx].internalNotes.push(`${new Date().toLocaleString()}: ${note}`);
-      setLocal(KEYS.TICKETS, tickets);
+      const notes = [...tickets[idx].internalNotes, `${new Date().toLocaleString()}: ${note}`];
+      await this.updateTicket(ticketId, { internalNotes: notes });
     }
   },
 
   async addTicketReply(ticketId: string, message: string, sender: string, isAdmin: boolean): Promise<void> {
-    const tickets = getLocal(KEYS.TICKETS, []);
+    const tickets = await this.getTickets();
     const idx = tickets.findIndex((t: SupportTicket) => t.id === ticketId);
     if (idx > -1) {
-      tickets[idx].replies.push({
+      const replies = [...tickets[idx].replies, {
         id: `reply-${Date.now()}`,
         sender,
         message,
         timestamp: new Date().toISOString(),
         isAdmin
-      });
-      tickets[idx].updatedAt = new Date().toISOString();
-      setLocal(KEYS.TICKETS, tickets);
+      }];
+      await this.updateTicket(ticketId, { replies });
     }
   },
 
+  /**
+   * ABANDONED CARTS
+   */
+  async getAbandonedCarts(): Promise<AbandonedCart[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('abandoned_carts').select('*');
+      if (!error && data) return data as AbandonedCart[];
+    }
+    return getLocal(KEYS.ABANDONED, []);
+  },
+
+  async sendRecoveryEmail(id: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('abandoned_carts').update({ recoverySent: true }).eq('id', id);
+    }
+    const abandoned = getLocal(KEYS.ABANDONED, []);
+    const idx = abandoned.findIndex((a: any) => a.id === id);
+    if (idx > -1) {
+      abandoned[idx].recoverySent = true;
+      setLocal(KEYS.ABANDONED, abandoned);
+    }
+  },
+
+  /**
+   * UTILITIES
+   */
   async generateInvoice(order: Order): Promise<string> {
     const header = `SEOUL MUSE ATELIER - INVOICE ${order.id}\n`;
     const details = `Date: ${new Date(order.date).toLocaleDateString()}\nCustomer: ${order.customerName}\nStatus: ${order.status}\n\n`;
@@ -332,19 +463,5 @@ export const inventoryService = {
     const headers = ['SKU', 'Name', 'Stock', 'Price'];
     const rows = products.map(p => [p.sku, p.name, p.stock, p.price].join(','));
     return [headers.join(','), ...rows].join('\n');
-  },
-
-  // Abandoned Cart methods
-  async getAbandonedCarts(): Promise<AbandonedCart[]> {
-    return getLocal(KEYS.ABANDONED, []);
-  },
-
-  async sendRecoveryEmail(id: string): Promise<void> {
-    const abandoned = getLocal(KEYS.ABANDONED, []);
-    const idx = abandoned.findIndex((a: any) => a.id === id);
-    if (idx > -1) {
-      abandoned[idx].recoverySent = true;
-      setLocal(KEYS.ABANDONED, abandoned);
-    }
   }
 };
