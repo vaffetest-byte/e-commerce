@@ -12,7 +12,13 @@ const KEYS = {
 
 const getLocal = (key: string, fallback: any) => {
   const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : fallback;
+  if (!data) return fallback;
+  try {
+    const parsed = JSON.parse(data);
+    return parsed.length > 0 ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
 };
 
 const setLocal = (key: string, data: any) => {
@@ -41,9 +47,12 @@ export const inventoryService = {
           query = query.order(filters.sortBy || 'name', { ascending: sortOrder });
         }
         const { data, error } = await query;
-        if (!error) return data || [];
-      } catch (e) {}
+        if (!error && data && data.length > 0) return data;
+      } catch (e) {
+        console.error("Supabase connection error:", e);
+      }
     }
+    // Fallback to local storage or mocks if remote is empty/fails
     return getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
   },
 
@@ -71,7 +80,7 @@ export const inventoryService = {
   async getOrders(): Promise<Order[]> {
     if (supabase) {
       const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
-      if (!error) return data || [];
+      if (!error && data && data.length > 0) return data;
     }
     return getLocal(KEYS.ORDERS, MOCK_ORDERS);
   },
@@ -181,7 +190,6 @@ export const inventoryService = {
 
   async getCoupons(): Promise<Coupon[]> { return getLocal(KEYS.COUPONS, MOCK_COUPONS); },
   
-  // Added missing saveCoupon to fix error in Marketing.tsx
   async saveCoupon(coupon: Coupon): Promise<Coupon> {
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
     const idx = coupons.findIndex((c: Coupon) => c.id === coupon.id);
@@ -192,7 +200,6 @@ export const inventoryService = {
     return updatedCoupon;
   },
 
-  // Added missing deleteCoupon to fix error in Marketing.tsx
   async deleteCoupon(id: string): Promise<void> {
     const coupons = getLocal(KEYS.COUPONS, MOCK_COUPONS);
     setLocal(KEYS.COUPONS, coupons.filter((c: Coupon) => c.id !== id));
@@ -201,7 +208,7 @@ export const inventoryService = {
   async getCustomers(): Promise<Customer[]> { 
     if (supabase) {
         const { data } = await supabase.from('customers').select('*');
-        if (data) return data;
+        if (data && data.length > 0) return data;
     }
     return getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS); 
   },
