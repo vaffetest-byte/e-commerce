@@ -1,24 +1,35 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ShoppingBag, Menu, X, Sparkles, Loader2, 
   ArrowUpRight, Search, ChevronRight, SlidersHorizontal,
-  ArrowRight, Info, Eye
+  ArrowRight, Info, Eye, CheckCircle2, Hash
 } from 'lucide-react';
-import { Product } from '../types';
+import { Product, Customer } from '../types';
 import { getFashionAdvice, getTrendRadar, generateProductDescription } from '../geminiService';
 import { inventoryService } from '../services/inventoryService';
+import CustomerAuth from './CustomerAuth';
 import Footer from './Footer';
 
 interface CatalogProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  currentCustomer: Customer | null;
+  onCustomerLogin: (customer: Customer) => void;
   onNavigateToHome: () => void;
   onNavigateToManifesto: () => void;
   onNavigateToLab: () => void;
 }
 
-const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHome, onNavigateToManifesto, onNavigateToLab }) => {
+const Catalog: React.FC<CatalogProps> = ({ 
+  products, 
+  setProducts, 
+  currentCustomer,
+  onCustomerLogin,
+  onNavigateToHome, 
+  onNavigateToManifesto, 
+  onNavigateToLab 
+}) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeCollection, setActiveCollection] = useState('All');
   const [cart, setCart] = useState<any[]>([]);
@@ -29,6 +40,10 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
   const [productDesc, setProductDesc] = useState<Record<string, string>>({});
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+  
+  // Auth/Checkout States
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [acquisitionSuccess, setAcquisitionSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const savedCart = localStorage.getItem('seoul_muse_cart');
@@ -67,22 +82,31 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
     setCart(prev => prev.filter(item => item.cartId !== cartId));
   };
 
+  const handleCheckoutInitiate = () => {
+    if (!currentCustomer) {
+      setIsAuthOpen(true);
+      return;
+    }
+    handleCheckout();
+  };
+
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !currentCustomer) return;
     setIsProcessingCheckout(true);
     try {
       const total = cart.reduce((sum, item) => sum + item.price, 0);
-      await inventoryService.placeOrder({
+      const order = await inventoryService.placeOrder({
         items: cart.map(item => ({ productId: item.id, name: item.name, quantity: 1, price: item.price })),
         total,
-        customerName: 'Muse Resident',
-        customerEmail: 'resident@seoulmuse.com'
+        customerName: currentCustomer.name,
+        customerEmail: currentCustomer.email,
+        shippingAddress: 'Seoul Terminal 4, Seongsu Atelier Dist.'
       });
+      setAcquisitionSuccess(order.id);
       setCart([]);
       setIsCartOpen(false);
       const updated = await inventoryService.getProducts();
       setProducts(updated);
-      alert("Artifact Acquisition Complete.");
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -110,6 +134,36 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
 
   return (
     <div className="min-h-screen bg-[#fdfcfb] text-[#0f172a] selection:bg-rose-600 selection:text-white pb-0">
+      
+      {isAuthOpen && (
+        <CustomerAuth 
+          onSuccess={(c) => { onCustomerLogin(c); setIsAuthOpen(false); }} 
+          onClose={() => setIsAuthOpen(false)} 
+        />
+      )}
+
+      {/* Success Modal */}
+      {acquisitionSuccess && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl animate-in fade-in duration-1000" onClick={() => setAcquisitionSuccess(null)} />
+            <div className="relative bg-white w-full max-w-2xl rounded-[60px] p-12 sm:p-20 text-center shadow-3xl animate-in zoom-in-95 duration-700">
+                <div className="w-24 h-24 bg-rose-500 rounded-full mx-auto mb-12 flex items-center justify-center text-white shadow-2xl animate-bounce">
+                    <CheckCircle2 size={48} strokeWidth={1} />
+                </div>
+                <h2 className="serif text-6xl md:text-8xl italic font-light tracking-tighter mb-8">Acquisition <span className="font-bold not-italic text-rose-600">Complete.</span></h2>
+                <p className="text-xl serif italic text-black/40 mb-16 leading-relaxed">Recorded for Resident {currentCustomer?.name}. Prepared for dispatch from Seongsu Atelier.</p>
+                <div className="bg-slate-50 p-8 rounded-[30px] border border-slate-100 mb-16 flex items-center justify-between">
+                    <div className="text-left">
+                        <span className="text-[8px] font-black uppercase tracking-[0.5em] text-black/20 block mb-1">Acquisition ID</span>
+                        <p className="font-mono text-xs font-black tracking-widest text-rose-600">{acquisitionSuccess}</p>
+                    </div>
+                    <Hash size={24} className="text-black/5" />
+                </div>
+                <button onClick={() => setAcquisitionSuccess(null)} className="w-full bg-black text-white py-8 rounded-full font-black uppercase tracking-[0.6em] text-[11px] hover:bg-rose-600 transition-all shadow-xl">Dismiss Protocol</button>
+            </div>
+        </div>
+      )}
+
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[800] lg:hidden animate-in fade-in duration-500">
@@ -315,6 +369,51 @@ const Catalog: React.FC<CatalogProps> = ({ products, setProducts, onNavigateToHo
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Cart Drawer Enhanced */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-[1000] flex justify-end">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsCartOpen(false)} />
+            <div className="relative w-full max-w-xl bg-white h-full shadow-3xl p-10 md:p-24 flex flex-col animate-in slide-in-from-right duration-700">
+                <div className="flex justify-between items-center mb-20">
+                    <div>
+                        <h2 className="serif text-6xl italic leading-none">The <span className="font-bold not-italic text-rose-600">Collection</span></h2>
+                    </div>
+                    <button onClick={() => setIsCartOpen(false)} className="p-5 rounded-full border border-slate-50 hover:bg-slate-50"><X size={28} strokeWidth={1} /></button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-12 no-scrollbar pr-2">
+                    {cart.map((item) => (
+                        <div key={item.cartId} className="flex gap-10 items-center group">
+                            <img src={item.image} className="w-24 h-32 rounded-[30px] object-cover grayscale group-hover:grayscale-0 transition-all shadow-lg" alt={item.name} />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-30 truncate">{item.name}</h4>
+                                    <button onClick={() => removeFromCart(item.cartId)} className="text-rose-500 hover:scale-125 transition-transform"><X size={14}/></button>
+                                </div>
+                                <p className="serif text-3xl italic text-rose-600">${item.price}</p>
+                            </div>
+                        </div>
+                    ))}
+                    {cart.length === 0 && <div className="text-center italic serif text-2xl text-black/10 py-20">Archive Empty.</div>}
+                </div>
+
+                <div className="pt-12 mt-8 border-t border-slate-100">
+                    <div className="flex justify-between items-baseline mb-12">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">Total Value</span>
+                        <span className="serif text-6xl font-bold tracking-tighter text-rose-600">${cart.reduce((a, b) => a + b.price, 0).toFixed(2)}</span>
+                    </div>
+                    <button 
+                      onClick={handleCheckoutInitiate} 
+                      disabled={cart.length === 0 || isProcessingCheckout} 
+                      className="w-full bg-black text-white py-8 rounded-full font-black text-[11px] uppercase tracking-[0.5em] hover:bg-rose-600 transition-all shadow-xl disabled:bg-slate-200 flex items-center justify-center gap-4"
+                    >
+                      {isProcessingCheckout ? <Loader2 className="animate-spin" /> : (currentCustomer ? 'Proceed to Acquisition' : 'Identify to Proceed')}
+                    </button>
+                </div>
+            </div>
         </div>
       )}
 
