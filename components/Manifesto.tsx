@@ -40,7 +40,7 @@ const Manifesto: React.FC<ManifestoProps> = ({ onNavigateToHome, onNavigateToCat
           </div>
         </div>
         <button onClick={onNavigateToHome} className="p-3 md:p-4 hover:bg-white/5 rounded-full transition-all group">
-          <X size={24} md:size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+          <X className="w-6 h-6 md:w-8 md:h-8" strokeWidth={1} />
         </button>
       </nav>
 
@@ -64,7 +64,7 @@ const Manifesto: React.FC<ManifestoProps> = ({ onNavigateToHome, onNavigateToCat
           </p>
           <div className="flex flex-col items-center gap-6 sm:gap-8">
             <div className="w-[1px] h-12 sm:h-16 md:h-24 bg-gradient-to-b from-rose-500 to-transparent" />
-            <ArrowDown size={18} sm:size={20} className="text-rose-500 animate-bounce" />
+            <ArrowDown className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-rose-500 animate-bounce" />
           </div>
         </div>
       </section>

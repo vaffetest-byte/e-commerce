@@ -123,13 +123,13 @@ const App: React.FC = () => {
         onClick={() => { setView('store'); }}
         className={`flex items-center gap-2 sm:gap-4 px-4 sm:px-8 py-3 sm:py-4 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] transition-all duration-500 ${view === 'store' ? 'bg-white text-black shadow-xl' : 'opacity-40 hover:opacity-100'}`}
       >
-        <ShoppingBag size={14} className="sm:size-[16px]" /> <span className="hidden xs:inline">Muse Mode</span><span className="xs:hidden">Muse</span>
+        <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Muse Mode</span><span className="xs:hidden">Muse</span>
       </button>
       <button 
         onClick={() => { setView('admin'); }}
         className={`flex items-center gap-2 sm:gap-4 px-4 sm:px-8 py-3 sm:py-4 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] transition-all duration-500 ${view === 'admin' ? 'bg-rose-500 text-white shadow-xl' : 'opacity-40 hover:opacity-100'}`}
       >
-        <Monitor size={14} className="sm:size-[16px]" /> <span className="hidden xs:inline">Atelier Admin</span><span className="xs:hidden">Atelier</span>
+        <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Atelier Admin</span><span className="xs:hidden">Atelier</span>
       </button>
     </div>
   );
@@ -182,7 +182,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-xl bg-white rounded-[40px] sm:rounded-[70px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] p-8 sm:p-20 border border-black/[0.02] relative z-10 animate-in zoom-in-95 duration-700">
           <div className="text-center mb-10 sm:mb-16">
              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-[#0f172a] rounded-2xl sm:rounded-[36px] mx-auto mb-6 sm:mb-10 flex items-center justify-center text-white shadow-[0_30px_60px_-15px_rgba(15,23,42,0.4)] rotate-3">
-               <Fingerprint size={32} sm:size={48} strokeWidth={1} />
+               <Fingerprint className="w-8 h-8 sm:w-12 sm:h-12" strokeWidth={1} />
              </div>
              <h2 className="serif text-4xl sm:text-6xl italic mb-4 leading-none text-[#0f172a]">Atelier Access</h2>
           </div>
@@ -191,7 +191,7 @@ const App: React.FC = () => {
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.4em] text-black/20 ml-4 sm:ml-6 italic">Identity Handle</label>
               <div className="relative">
-                <Mail className="absolute left-6 sm:left-8 top-1/2 -translate-y-1/2 text-black/10" size={18} sm:size={20} />
+                <Mail className="absolute left-6 sm:left-8 top-1/2 -translate-y-1/2 text-black/10 w-[18px] h-[18px] sm:w-5 sm:h-5" />
                 <input 
                   type="email" 
                   placeholder="ID@SEOULMUSE.COM" 
@@ -206,7 +206,7 @@ const App: React.FC = () => {
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.4em] text-black/20 ml-4 sm:ml-6 italic">Access Key</label>
               <div className="relative">
-                <Lock className="absolute left-6 sm:left-8 top-1/2 -translate-y-1/2 text-black/10" size={18} sm:size={20} />
+                <Lock className="absolute left-6 sm:left-8 top-1/2 -translate-y-1/2 text-black/10 w-[18px] h-[18px] sm:w-5 sm:h-5" />
                 <input 
                   type="password" 
                   placeholder="••••••••" 
@@ -234,19 +234,19 @@ const App: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
                 <button onClick={() => quickLogin(Role.SUPER_ADMIN)} className="group flex flex-col items-center gap-2 p-2 sm:p-4">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#0f172a] group-hover:text-white transition-all">
-                        <ShieldCheck size={18} sm:size={24} strokeWidth={1.5} />
+                        <ShieldCheck className="w-[18px] h-[18px] sm:w-6 sm:h-6" strokeWidth={1.5} />
                     </div>
                     <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-slate-400">Super</span>
                 </button>
                 <button onClick={() => quickLogin(Role.MANAGER)} className="group flex flex-col items-center gap-2 p-2 sm:p-4">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-rose-500 group-hover:text-white transition-all">
-                        <Briefcase size={18} sm:size={24} strokeWidth={1.5} />
+                        <Briefcase className="w-[18px] h-[18px] sm:w-6 sm:h-6" strokeWidth={1.5} />
                     </div>
                     <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-slate-400">Manager</span>
                 </button>
                 <button onClick={() => quickLogin(Role.SUPPORT)} className="group flex flex-col items-center gap-2 p-2 sm:p-4">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                        <UserCircle size={18} sm:size={24} strokeWidth={1.5} />
+                        <UserCircle className="w-[18px] h-[18px] sm:w-6 sm:h-6" strokeWidth={1.5} />
                     </div>
                     <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-slate-400">Support</span>
                 </button>
