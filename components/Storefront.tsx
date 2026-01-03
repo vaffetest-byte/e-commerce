@@ -475,26 +475,31 @@ const Storefront: React.FC<StorefrontProps> = ({
           
           <div className="xl:w-2/5 reveal" style={{ transitionDelay: '300ms' }}>
             <div className="relative aspect-square w-full rounded-[120px] overflow-hidden group shadow-[0_0_80px_rgba(244,63,94,0.1)] border border-white/5 bg-slate-900">
+              {/* Secondary layer for "Girl" requested visual if primary fails or is bubble texture */}
+              <div className="absolute inset-0 z-0 opacity-20 transition-all duration-1000 group-hover:opacity-40">
+                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Muse Persona" />
+              </div>
+
               <img 
                 src={homeConfig.lab.image} 
-                className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s]" 
+                className="relative z-10 w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s]" 
                 alt="Neural Synthesis Model" 
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-60" />
+              <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 to-transparent opacity-60" />
               
               {/* Decorative Neural Elements */}
-              <div className="absolute top-12 left-12 p-6 rounded-full border border-white/10 bg-black/40 backdrop-blur-md animate-pulse">
+              <div className="absolute top-12 left-12 z-30 p-6 rounded-full border border-white/10 bg-black/40 backdrop-blur-md animate-pulse">
                 <Sparkles size={24} className="text-rose-500" />
               </div>
               
-              <div className="absolute bottom-16 left-16 right-16">
+              <div className="absolute bottom-16 left-16 right-16 z-30">
                   <div className="h-[1px] w-full bg-rose-500/50 mb-4 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-1000" />
                   <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white/60">Registry Synthesis Complete</span>
               </div>
               
               {/* Scanning effect Overlay */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-rose-500/30 blur-sm animate-[scan_4s_linear_infinite]" />
+              <div className="absolute top-0 left-0 w-full h-1 z-40 bg-rose-500/30 blur-sm animate-[scan_4s_linear_infinite]" />
             </div>
           </div>
         </div>
