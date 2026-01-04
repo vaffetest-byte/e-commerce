@@ -264,14 +264,14 @@ const Settings: React.FC = () => {
                            <div className={`w-2.5 h-2.5 rounded-full ${log.severity === 'high' ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]' : log.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                            <div>
                               <p className="text-[11px] font-black tracking-[0.2em] uppercase text-white/90">{log.action}</p>
-                              {/* Fix: Explicitly cast log.user to string to satisfy compiler */}
-                              <p className="text-[9px] text-white/30 font-mono mt-1 tracking-tight">SRC_IP: {log.ip} // RESIDENT: {(log.user as string).toUpperCase()}</p>
+                              {/* Fix: Explicitly wrap log.user in String() to ensure toUpperCase() is available on a string type */}
+                              <p className="text-[9px] text-white/30 font-mono mt-1 tracking-tight">SRC_IP: {log.ip} // RESIDENT: {String(log.user).toUpperCase()}</p>
                            </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
                             <span className="text-[9px] font-mono text-white/20 uppercase">{log.timestamp}</span>
-                            {/* Fix: Explicitly cast log.id to string to satisfy compiler */}
-                            <span className="text-[8px] font-black uppercase tracking-widest text-white/10 px-3 py-1 bg-white/[0.02] rounded-full border border-white/5">H-HASH-{(log.id as string).toUpperCase()}</span>
+                            {/* Fix: Explicitly wrap log.id in String() to ensure toUpperCase() is available on a string type */}
+                            <span className="text-[8px] font-black uppercase tracking-widest text-white/10 px-3 py-1 bg-white/[0.02] rounded-full border border-white/5">H-HASH-{String(log.id).toUpperCase()}</span>
                         </div>
                       </div>
                     ))}

@@ -147,7 +147,7 @@ const Storefront: React.FC<StorefrontProps> = ({
       <nav className={`fixed top-0 w-full z-[1000] h-24 md:h-32 flex items-center px-6 md:px-24 justify-between transition-all duration-700 ${scrollY > 50 ? 'bg-white/80 backdrop-blur-2xl border-b border-black/[0.03]' : 'bg-transparent'}`}>
         <div className="flex items-center gap-20">
             <button className="flex flex-col group text-left" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-                <span className="serif text-2xl md:text-4xl font-bold tracking-tighter leading-none group-hover:text-rose-500 transition-colors">Seoul Muse</span>
+                <span className="serif text-2xl md:text-4xl font-bold tracking-tighter leading-none group-hover:text-rose-50 transition-colors">Seoul Muse</span>
                 <span className="text-[7px] font-black tracking-[0.6em] text-black/20 mt-1 uppercase hidden xs:block">Neural Archive // V4.2</span>
             </button>
         </div>
@@ -194,7 +194,7 @@ const Storefront: React.FC<StorefrontProps> = ({
       </nav>
 
       {/* Cinematic Hero Section */}
-      <section className="relative h-[110vh] flex items-center px-6 md:px-24 overflow-hidden bg-white">
+      <section className="relative min-h-screen lg:h-auto lg:min-h-[110vh] flex items-center px-6 md:px-24 bg-white overflow-hidden py-32 md:py-48">
         {/* Subtle HUD UI */}
         <div className="absolute top-40 left-24 hidden xl:block space-y-6 opacity-30">
             <div className="flex items-center gap-4">
@@ -217,14 +217,14 @@ const Storefront: React.FC<StorefrontProps> = ({
         
         <div className="scan-line" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-20 items-center w-full relative z-10 pt-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center w-full relative z-10">
             <div className="lg:col-span-7 flex flex-col items-start stagger-in">
-                <div className="inline-flex items-center gap-6 px-6 py-2 rounded-full border border-black/5 bg-slate-50/50 backdrop-blur-md mb-12 shadow-sm">
+                <div className="inline-flex items-center gap-6 px-6 py-2 rounded-full border border-black/5 bg-slate-50/50 backdrop-blur-md mb-8 md:mb-12 shadow-sm">
                     <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
                     <span className="text-[8px] font-black uppercase tracking-[0.5em] text-rose-500 italic">{homeConfig.hero.registryLabel}</span>
                 </div>
                 
-                <h1 className="serif text-8xl sm:text-9xl md:text-[16rem] leading-[0.75] font-bold tracking-tighter mb-16 text-slate-900">
+                <h1 className="serif text-7xl sm:text-8xl md:text-[10rem] xl:text-[14rem] leading-[0.75] font-bold tracking-tighter mb-12 md:mb-16 text-slate-900">
                    <span className="font-light italic block opacity-90 transition-transform duration-[2s]" 
                     style={{ transform: `translate3d(${scrollY * -0.05}px, 0, 0) rotate(${scrollY * -0.003}deg)` }}>
                     {homeConfig.hero.headingPart1}
@@ -234,18 +234,18 @@ const Storefront: React.FC<StorefrontProps> = ({
                    </span>
                 </h1>
 
-                <p className="max-w-xl text-black/40 text-xl md:text-3xl italic serif leading-relaxed mb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
+                <p className="max-w-xl text-black/40 text-lg md:text-2xl italic serif leading-relaxed mb-12 md:mb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
                    {homeConfig.hero.subheading}
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-10 items-center w-full sm:w-auto">
-                    <button onClick={onNavigateToCatalog} className="w-full sm:w-auto bg-black text-white px-24 py-10 rounded-full font-black uppercase text-[10px] tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center justify-center gap-12 shadow-3xl group relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row gap-8 md:gap-10 items-center w-full sm:w-auto">
+                    <button onClick={onNavigateToCatalog} className="w-full sm:w-auto bg-black text-white px-16 xl:px-24 py-8 xl:py-10 rounded-full font-black uppercase text-[10px] tracking-[0.5em] hover:bg-rose-600 transition-all flex items-center justify-center gap-10 xl:gap-12 shadow-3xl group relative overflow-hidden">
                         <span className="relative z-10">Identify Archives</span>
                         <ArrowUpRight size={24} className="relative z-10 group-hover:rotate-45 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
                     </button>
                     <div className="flex items-center gap-6 group cursor-pointer" onClick={onNavigateToManifesto}>
-                        <div className="w-16 h-16 rounded-full border border-black/10 flex items-center justify-center group-hover:border-rose-500 transition-all duration-700">
+                        <div className="w-14 h-14 xl:w-16 xl:h-16 rounded-full border border-black/10 flex items-center justify-center group-hover:border-rose-500 transition-all duration-700">
                             <MousePointer2 size={20} className="group-hover:text-rose-500 transition-transform group-hover:scale-125" />
                         </div>
                         <span className="text-[9px] font-black uppercase tracking-[0.4em] text-black/30 group-hover:text-black transition-colors">The Manifesto</span>
@@ -254,7 +254,7 @@ const Storefront: React.FC<StorefrontProps> = ({
             </div>
             
             <div className="lg:col-span-5 flex justify-end relative">
-                <div className="relative aspect-[4/5] w-full max-w-[500px] rounded-[240px] overflow-hidden shadow-[0_120px_240px_-40px_rgba(0,0,0,0.15)] border border-black/5 group">
+                <div className="relative aspect-[4/5] w-full max-w-[500px] rounded-[180px] xl:rounded-[240px] overflow-hidden shadow-[0_120px_240px_-40px_rgba(0,0,0,0.15)] border border-black/5 group">
                     <img 
                       src={homeConfig.hero.image} 
                       className="w-full h-full object-cover grayscale brightness-105 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[4s] ease-out" 
@@ -271,11 +271,11 @@ const Storefront: React.FC<StorefrontProps> = ({
       </section>
 
       {/* Grid Collections Preview */}
-      <section className="px-6 md:px-24 py-60 bg-[#fdfcfb]">
+      <section className="px-6 md:px-24 py-40 md:py-60 bg-[#fdfcfb]">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-40 gap-10 reveal">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-24 md:mb-40 gap-10 reveal">
             <div className="max-w-3xl">
-              <span className="text-[9px] font-black uppercase tracking-[0.8em] text-rose-500 block mb-12 italic uppercase">{homeConfig.aura.subheading}</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.8em] text-rose-500 block mb-8 md:mb-12 italic uppercase">{homeConfig.aura.subheading}</span>
               <h2 className="serif text-7xl sm:text-9xl md:text-[11rem] italic font-light tracking-tighter leading-[0.8]">
                  Featured <br/><span className="not-italic font-bold text-slate-900">{homeConfig.aura.heading.split(' ')[0]}</span>.
               </h2>
@@ -314,10 +314,10 @@ const Storefront: React.FC<StorefrontProps> = ({
       </section>
 
       {/* Synthesis Lab Synthesis UI (Refined Lab) */}
-      <section className="relative px-6 md:px-24 py-80 bg-[#050505] overflow-hidden">
+      <section className="relative px-6 md:px-24 py-40 md:py-80 bg-[#050505] overflow-hidden">
         <div className="absolute top-0 right-0 w-full h-full bg-rose-600/[0.03] blur-[200px] pointer-events-none" />
-        <div className="max-w-7xl mx-auto flex flex-col xl:flex-row items-center gap-40">
-          <div className="xl:w-3/5 space-y-20 reveal">
+        <div className="max-w-7xl mx-auto flex flex-col xl:flex-row items-center gap-20 md:gap-40">
+          <div className="xl:w-3/5 space-y-12 md:space-y-20 reveal">
             <div className="inline-flex items-center gap-8 px-8 py-4 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-3xl">
               <Cpu size={20} className="text-rose-500" />
               <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/40">{homeConfig.lab.trackLabel}</span>
