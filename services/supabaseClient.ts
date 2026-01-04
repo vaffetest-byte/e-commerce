@@ -1,17 +1,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+// Use environment variables injected by Vite, with hardcoded fallbacks as a safety measure
+const supabaseUrl = process.env.SUPABASE_URL || 'https://laudxusnxpulctxwbjtq.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdWR4dXNueHB1bGN0eHdianRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNjI3MjYsImV4cCI6MjA4MjkzODcyNn0.UPmNRGQ8BUm4rQsSZ2eNVyJ8aZlS3iE6fA7_cuC26a0';
 
-// Initialize the client only if credentials exist.
-// These are now provided via the vite.config.ts injection.
-export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
+// Initialize the client.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-if (!supabase) {
-  console.warn("Supabase credentials missing. App is running in Local Fallback mode.");
-} else {
-  console.log("Supabase Engine: Connected to laudxusnxpulctxwbjtq");
-}
+console.log("Supabase Engine: Initialized for target laudxusnxpulctxwbjtq");

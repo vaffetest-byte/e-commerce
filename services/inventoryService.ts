@@ -27,7 +27,6 @@ const simpleHash = (str: string) => {
   return hash.toString(16);
 };
 
-// Local storage helpers for fallbacks
 const getLocal = (key: string, fallback: any) => {
   const data = localStorage.getItem(key);
   if (!data) return fallback;
@@ -45,6 +44,81 @@ const setLocal = (key: string, data: any) => {
 
 export const inventoryService = {
   /**
+   * SEEDING & SYNC (RE-ENGINEERED V2.5)
+   */
+  async seedCloudRegistry(): Promise<{ success: boolean; message: string; report: Record<string, 'ok' | 'fail'> }> {
+    console.log("Starting Seoul Muse Granular Seeding Protocol (v2.5)...");
+    if (!supabase) {
+      return { success: false, message: "Supabase client not initialized.", report: {} };
+    }
+
+    const report: Record<string, 'ok' | 'fail'> = {
+      products: 'fail',
+      customers: 'fail',
+      orders: 'fail',
+      coupons: 'fail',
+      config: 'fail'
+    };
+
+    // 1. Sync Products
+    try {
+      const productsToSeed = MOCK_PRODUCTS.map(({ reviews, ...p }) => p);
+      const { error } = await supabase.from('products').upsert(productsToSeed);
+      if (error) throw error;
+      report.products = 'ok';
+    } catch (e: any) {
+      console.warn("Table Sync Failed: Products. Reason:", e.message);
+    }
+
+    // 2. Sync Customers
+    try {
+      const { error } = await supabase.from('customers').upsert(MOCK_CUSTOMERS);
+      if (error) throw error;
+      report.customers = 'ok';
+    } catch (e: any) {
+      console.warn("Table Sync Failed: Customers. Reason:", e.message);
+    }
+
+    // 3. Sync Orders
+    try {
+      const { error } = await supabase.from('orders').upsert(MOCK_ORDERS);
+      if (error) throw error;
+      report.orders = 'ok';
+    } catch (e: any) {
+      console.warn("Table Sync Failed: Orders. Reason:", e.message);
+    }
+
+    // 4. Sync Coupons
+    try {
+      const { error } = await supabase.from('coupons').upsert(MOCK_COUPONS);
+      if (error) throw error;
+      report.coupons = 'ok';
+    } catch (e: any) {
+      console.warn("Table Sync Failed: Coupons. Reason:", e.message);
+    }
+
+    // 5. Sync Site Config
+    try {
+      const { error } = await supabase.from('site_config').upsert({ config_id: 'home_config', value: DEFAULT_HOME_CONFIG });
+      if (error) throw error;
+      report.config = 'ok';
+    } catch (e: any) {
+      console.warn("Table Sync Failed: Site Config. Reason:", e.message);
+    }
+
+    const successCount = Object.values(report).filter(v => v === 'ok').length;
+    const allOk = successCount === 5;
+
+    return { 
+      success: allOk, 
+      message: allOk 
+        ? "Full Registry Synchronized." 
+        : `Partial Sync Complete (${successCount}/5). Review SQL Manifest v2.5 to repair missing columns.`,
+      report
+    };
+  },
+
+  /**
    * PRODUCTS
    */
   async getProducts(filters?: InventoryFilters): Promise<Product[]> {
@@ -61,10 +135,14 @@ export const inventoryService = {
         query = query.order(filters.sortBy || 'name', { ascending: filters.sortOrder === 'asc' });
       }
 
-      const { data, error } = await query;
-      if (!error && data) {
-        setLocal(KEYS.PRODUCTS, data); // Sync local cache
-        return data as Product[];
+      try {
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          setLocal(KEYS.PRODUCTS, data);
+          return data as Product[];
+        }
+      } catch (e) {
+        console.warn("Products retrieval error, falling back to local.");
       }
     }
     return getLocal(KEYS.PRODUCTS, MOCK_PRODUCTS);
@@ -72,9 +150,11 @@ export const inventoryService = {
 
   async saveProduct(product: Product): Promise<Product> {
     if (supabase) {
+      // Remove UI-only fields before saving to DB
+      const { reviews, ...dbProduct } = product;
       const { data, error } = await supabase
         .from('products')
-        .upsert({ ...product, id: product.id || `art-${Date.now()}` })
+        .upsert({ ...dbProduct, id: product.id || `art-${Date.now()}` })
         .select()
         .single();
       if (!error && data) return data as Product;
@@ -114,10 +194,14 @@ export const inventoryService = {
    */
   async getOrders(): Promise<Order[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
-      if (!error && data) {
-        setLocal(KEYS.ORDERS, data);
-        return data as Order[];
+      try {
+        const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
+        if (!error && data && data.length > 0) {
+          setLocal(KEYS.ORDERS, data);
+          return data as Order[];
+        }
+      } catch (e) {
+        console.warn("Orders retrieval error.");
       }
     }
     return getLocal(KEYS.ORDERS, MOCK_ORDERS);
@@ -145,7 +229,6 @@ export const inventoryService = {
       await supabase.from('orders').insert([newOrder]);
     }
 
-    // Update stock and local
     for (const item of newOrder.items) {
       await this.adjustStock(item.productId, -item.quantity);
     }
@@ -154,7 +237,6 @@ export const inventoryService = {
     orders.unshift(newOrder);
     setLocal(KEYS.ORDERS, orders);
 
-    // Update customer LTV
     const customers = await this.getCustomers();
     const cIdx = customers.findIndex(c => c.email === newOrder.customerEmail);
     if (cIdx > -1) {
@@ -206,10 +288,14 @@ export const inventoryService = {
    */
   async getCustomers(): Promise<Customer[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('customers').select('*');
-      if (!error && data) {
-        setLocal(KEYS.CUSTOMERS, data);
-        return data as Customer[];
+      try {
+        const { data, error } = await supabase.from('customers').select('*');
+        if (!error && data && data.length > 0) {
+          setLocal(KEYS.CUSTOMERS, data);
+          return data as Customer[];
+        }
+      } catch (e) {
+        console.warn("Customers retrieval error.");
       }
     }
     return getLocal(KEYS.CUSTOMERS, MOCK_CUSTOMERS);
@@ -221,10 +307,14 @@ export const inventoryService = {
     
     if (supabase) {
       const query = supabase.from('customers').select('*').eq('email', normalizedEmail);
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        const user = data[0] as Customer;
-        if (!hashedPassword || user.password === hashedPassword) return user;
+      try {
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          const user = data[0] as Customer;
+          if (!hashedPassword || user.password === hashedPassword) return user;
+        }
+      } catch (e) {
+        console.warn("Auth check error.");
       }
     }
 
@@ -305,10 +395,14 @@ export const inventoryService = {
    */
   async getCoupons(): Promise<Coupon[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('coupons').select('*');
-      if (!error && data) {
-        setLocal(KEYS.COUPONS, data);
-        return data as Coupon[];
+      try {
+        const { data, error } = await supabase.from('coupons').select('*');
+        if (!error && data && data.length > 0) {
+          setLocal(KEYS.COUPONS, data);
+          return data as Coupon[];
+        }
+      } catch (e) {
+        console.warn("Coupons retrieval error.");
       }
     }
     return getLocal(KEYS.COUPONS, MOCK_COUPONS);
@@ -340,23 +434,34 @@ export const inventoryService = {
    */
   async getHomeConfig(): Promise<HomeConfig> {
     if (supabase) {
-      const { data, error } = await supabase.from('site_config').select('value').eq('key', 'home_config').single();
-      if (!error && data) return data.value as HomeConfig;
+      try {
+        const { data, error } = await supabase.from('site_config').select('value').eq('config_id', 'home_config').single();
+        if (!error && data) return data.value as HomeConfig;
+        if (error && error.code !== 'PGRST116') {
+          console.warn(`Registry Config retrieval error [${error.code}]: ${error.message}. Ensure SQL Manifest v2.5 is executed.`);
+        }
+      } catch (e) {
+        console.warn("Registry Config request failed, using local default.");
+      }
     }
     return getLocal(KEYS.HOME_CONFIG, DEFAULT_HOME_CONFIG);
   },
 
   async saveHomeConfig(config: HomeConfig): Promise<void> {
     if (supabase) {
-      await supabase.from('site_config').upsert({ key: 'home_config', value: config });
+      await supabase.from('site_config').upsert({ config_id: 'home_config', value: config });
     }
     setLocal(KEYS.HOME_CONFIG, config);
   },
 
   async getTickets(): Promise<SupportTicket[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('support_tickets').select('*').order('updatedAt', { ascending: false });
-      if (!error && data) return data as SupportTicket[];
+      try {
+        const { data, error } = await supabase.from('support_tickets').select('*').order('updatedAt', { ascending: false });
+        if (!error && data) return data as SupportTicket[];
+      } catch (e) {
+        console.warn("Tickets retrieval error.");
+      }
     }
     return getLocal(KEYS.TICKETS, []);
   },
@@ -429,8 +534,12 @@ export const inventoryService = {
    */
   async getAbandonedCarts(): Promise<AbandonedCart[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('abandoned_carts').select('*');
-      if (!error && data) return data as AbandonedCart[];
+      try {
+        const { data, error } = await supabase.from('abandoned_carts').select('*');
+        if (!error && data) return data as AbandonedCart[];
+      } catch (e) {
+        console.warn("Abandoned carts error.");
+      }
     }
     return getLocal(KEYS.ABANDONED, []);
   },
